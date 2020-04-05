@@ -18,6 +18,7 @@ simulacion <- function(){
   aciertos = sum(X)
   return(aciertos)
 }
+sdnvkfnvklfnvkf
 
 
 sol2_hist <- replicate(n = 100000,simulacion())
