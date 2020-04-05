@@ -35,3 +35,5 @@ par(mfrow=c(1,1))
 # Se agrega las proporciones de cada cantidad de aciertos para mostrar que son muy similares a las calculadas en la solucion 1
 
 prop.table(table(replicate(n = 100000,simulacion())))
+
+print('Cambio esto')
