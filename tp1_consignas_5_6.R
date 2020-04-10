@@ -3,6 +3,8 @@ rm(list=ls())
 library(lubridate)
 library(ggplot2)
 library(dplyr)
+library('rmarkdown')
+library(pwr)
 
 setwd('C:/Users/elosasso/OneDrive - Universidad Torcuato Di Tella/Metodos estadisticos aplicados a negocios/TP1')
 
@@ -123,36 +125,37 @@ ggplot(filter(df,(id_estacion_origen == 009) & (id_estacion_destino == 066))) +
 
 df$mas_15_min <- df$duracion_recorrido_manual > 15*60
 
-# Calculo la proporcion para aquellos que realizaron el viaje entre las estaciones 009 y 006
+# Hip髏esis nula H0:        La proporci髇 de usuarios que tardan mas de 15 minutos en hacer el recorrido de la estacion 009 a la 066
+#                           es mayor o igual al 20%
+# Hip髏esis alternativa H1: La proporci髇 de usuarios que tardan mas de 15 minutos en hacer el recorrido de la estacion 009 a la 066
+#                           es menor al 20%
 
-phat <- as.numeric(prop.table(table(select(filter(df,(id_estacion_origen == 009) & (id_estacion_destino == 066)), mas_15_min)))[2])
+# Para hacer el test se aplica un binom.test con un nivel de significacion del 0.05
 
+binom.test( x = nrow(filter(df,id_estacion_origen == 009, id_estacion_destino == 066,mas_15_min == TRUE)), 
+            n = nrow(filter(df,id_estacion_origen == 009, id_estacion_destino == 066)), 
+            p = 0.2, alternative = 'less')
 
-n <- nrow(filter(df,(id_estacion_origen == 009) & (id_estacion_destino == 066)))
-#phat <- 0.53
-
-zstat <- (phat-0.2)/sqrt(0.2*(1-0.2)/n); zstat
-
-zcrit <- qnorm(0.95); zcrit
-
-# Chequeo si el z estadistico es menor al critico (lo que indicar铆a que no puede refutarse la hipotesis nula)
-
-if (zstat < zcrit){
-  
-  print('No se refuta la hip贸tesis nula: La proporci贸n de usuarios que tardan m谩s de 15 minutos no supera el 20%')
-}else{
-  
-  print('Se refuta la hip贸tesis nula: La proporci贸n de usuarios que tardan m谩s de 15 minutos no supera el 20%')
-}
+# El p-value da 0.06669 > a 0.05 del alpha, por lo que no puede rechazarse la hipotesis nula
   
 ######################################################################################################################
 # Estudio la potencia del test
 
+n = nrow(filter(df,id_estacion_origen == 009, id_estacion_destino == 066))
+
+mustar <- 0.2 #seq(from = 0.1, to=0.2, by=0.001)
+
+xcrit <- qnorm(0.05)*sqrt((0.2*(1-0.2))/n)+0.2
+
+beta <- 1-pnorm((xcrit-mustar)/sqrt((mustar*(1-mustar))/n))
+
+potencia <- 1-beta
 
 
-
-
-
+plot(mustar,potencia, ylim=c(0,1),type = "p", xlab= "mu*", ylab= "potencia", lwd=2)
+abline(h = potencia, lty = 2)
+text(0.15, potencia,  potencia,
+     cex=1, pos=3,col="red") 
 
 
 
