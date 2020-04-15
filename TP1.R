@@ -6,6 +6,7 @@
 
 library(plotly)
 library(dplyr)
+library(boot)
 
 # ----> Leer Datos <----
 
@@ -23,7 +24,7 @@ load("datasets/recorridos.RData")
 
 # ----> Analisis <----
 
-    # ----> Parte 1 <----
+# ----> Parte 1 <----
 
 distGenero<- as.data.frame(recorridos %>% group_by(genero_usuario) %>% 
                                summarise(cantidad = length(genero_usuario)))
@@ -51,7 +52,7 @@ plot_ly(recorridos, x = ~round(as.numeric(recorridos$duracion_recorrido)/60),
            yaxis = list(title = "Distribucion"),
            xaxis = list(title = "Minutos"))
 
-    # ----> Parte 4 <----
+# ----> Parte 4 <----
 
 posUsuario<- recorridos$id_usuario == 606320
 recorridosCiclista<- recorridos[posUsuario,] %>% 
@@ -105,7 +106,7 @@ posUsuario<- posUsuario & recorridos$velocidad > 0
 mediaArmonica<- 1/mean(1/recorridos$velocidad[posUsuario])
 mediaAritmetica<- mean(recorridos$velocidad[posUsuario])
 
-    # ----> Parte 7 <----
+# ----> Parte 7 <----
 
 recorridos<- recorridos[!(is.na(recorridos$id_estacion_origen) |
                               is.na(recorridos$id_estacion_destino)),]
@@ -132,3 +133,40 @@ t.test(viajesDiariosAntes$viajes[92:151],viajesDiariosDespues$viajes[1:60])
 
 plot_ly(viajesDiariosDespues, type = "scatter", mode = "line",
         x = ~ fecha_origen, y = ~viajes)
+
+# ----> Parte 10 <----
+
+usuarios<- read.csv("datasets/usuarios-ecobici-2018.csv")
+
+cat(paste("Catidad de usuarios en dataframe:",length(unique(recorridos$id_usuario)),
+          "\nCatidad de usuarios:",nrow(usuarios),
+          "\nCantidad de usuarios en ambos DF:",sum(unique(recorridos$id_usuario) %in% usuarios$usuario_id)))
+
+archivos<- c("datasets/usuarios-ecobici-2017.csv",
+             "datasets/usuarios-ecobici-2016.csv",
+             "datasets/usuarios-ecobici-2015.csv")
+for(archivo in archivos){
+    aux<- read.csv(archivo)
+    usuarios<- rbind(usuarios,aux)
+}
+
+cat(paste("Catidad de usuarios en dataframe:",length(unique(recorridos$id_usuario)),
+          "\nCatidad de usuarios:",nrow(usuarios),
+          "\nCantidad de usuarios en ambos DF:",sum(unique(recorridos$id_usuario) %in% usuarios$usuario_id)))
+rm(aux)
+gc()
+
+datosEdad<- merge(recorridos[,c("id_usuario","duracion_recorrido")],
+                  usuarios[,c("usuario_id","usuario_edad")],
+                  by.x = "id_usuario", by.y = "usuario_id")
+
+fc_cor <- function(d,i){
+    d <- data[i,]
+    return(cor(d$duracion_recorrido,d$usuario_edad))
+}
+
+boot_cor <- boot(data = datosEdad, statistic = cor, R = 1000)
+
+plot(boot_cor)
+
+boot.ci(boot.out = boot_cor, type = c("norm", "basic", "perc"))
