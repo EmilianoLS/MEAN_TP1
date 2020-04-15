@@ -173,3 +173,4 @@ boot_cor <- boot(data = datosEdad, statistic = fc_cor, R = 1000)
 plot(boot_cor)
 
 boot.ci(boot.out = boot_cor, type = c("norm", "basic", "perc","bca"))
+
