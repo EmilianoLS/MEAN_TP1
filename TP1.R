@@ -6,6 +6,7 @@
 
 library(plotly)
 library(dplyr)
+library(boot)
 
 # ----> Leer Datos <----
 
@@ -17,44 +18,44 @@ leerDatosRecorridos<- function(dir){
 }
 
 direccion<- "datasets/" # Direccion en la que se encuentran los datasets
-# recorridos<- leerDatosRecorridos(direccion)
+recorridos<- leerDatosRecorridos(direccion)
 save(recorridos, file = "datasets/recorridos.RData")
 load("datasets/recorridos.RData")
 
 # ----> Analisis <----
 
-    # ----> Parte 1 <----
+# ----> Parte 1 <----
 
-distGenero<- as.data.frame(recorridos %>% group_by(genero_usuario) %>% 
+distGenero<- as.data.frame(recorridos %>% group_by(genero_usuario) %>%
                                summarise(cantidad = length(genero_usuario)))
 plot_ly(distGenero, x = ~genero_usuario, y = ~cantidad, type = "bar") %>%
     layout(title = "Distribucion de viajes por genero",
            xaxis = list(title = "Genero"), yaxis = list(title = "Numero de viajes"))
 
-distGenero<- as.data.frame(recorridos %>% group_by(genero_usuario) %>% 
+distGenero<- as.data.frame(recorridos %>% group_by(genero_usuario) %>%
                                summarise(cantidad = length(unique(id_usuario))))
 plot_ly(distGenero, x = ~genero_usuario, y = ~cantidad, type = "bar") %>%
     layout(title = "Distribucion de usuarios activos por genero",
            xaxis = list(title = "Genero"), yaxis = list(title = "Numero de usuarios activos"))
 
 
-evoViajes<- as.data.frame(recorridos %>% 
+evoViajes<- as.data.frame(recorridos %>%
                               group_by(fecha = as.Date(fecha_origen_recorrido)) %>%
                               summarise(cantidad = length(fecha_origen_recorrido)))
 plot_ly(evoViajes, x = ~fecha, y = ~cantidad, type = "scatter", mode = "line") %>%
     layout(title = "Evolucion de numero de viajes",
            xaxis = list(title = "Fecha"), yaxis = list(title = "Numero de viajes"))
 
-plot_ly(recorridos, x = ~round(as.numeric(recorridos$duracion_recorrido)/60), 
+plot_ly(recorridos, x = ~round(as.numeric(recorridos$duracion_recorrido)/60),
         type = "histogram", histnorm = "probability") %>%
     layout(title = "Histograma de duracion del recorrido",
            yaxis = list(title = "Distribucion"),
            xaxis = list(title = "Minutos"))
 
-    # ----> Parte 4 <----
+# ----> Parte 4 <----
 
 posUsuario<- recorridos$id_usuario == 606320
-recorridosCiclista<- recorridos[posUsuario,] %>% 
+recorridosCiclista<- recorridos[posUsuario,] %>%
     group_by(id_estacion_origen,lat_estacion_origen,long_estacion_origen,
              id_estacion_destino,lat_estacion_destino,long_estacion_destino) %>%
     summarise(recorridos = length(id_estacion_origen),
@@ -105,7 +106,7 @@ posUsuario<- posUsuario & recorridos$velocidad > 0
 mediaArmonica<- 1/mean(1/recorridos$velocidad[posUsuario])
 mediaAritmetica<- mean(recorridos$velocidad[posUsuario])
 
-    # ----> Parte 7 <----
+# ----> Parte 7 <----
 
 recorridos<- recorridos[!(is.na(recorridos$id_estacion_origen) |
                               is.na(recorridos$id_estacion_destino)),]
@@ -114,9 +115,9 @@ recorridos$fecha_origen<- as.Date(recorridos$fecha_origen_recorrido)
 recorridos$fecha_destino<- as.Date(recorridos$fecha_destino_recorrido)
 recorridos$facultad_derecho<- recorridos$id_estacion_destino == 1 |
     recorridos$id_estacion_origen == 1
-recorridosAntes<- recorridos[recorridos$facultad_derecho & 
+recorridosAntes<- recorridos[recorridos$facultad_derecho &
                                  recorridos$mes < 5,]
-recorridosDespues<- recorridos[recorridos$facultad_derecho & 
+recorridosDespues<- recorridos[recorridos$facultad_derecho &
                                    recorridos$mes > 4,]
 
 viajesDiariosAntes<- recorridosAntes %>% group_by(fecha_origen) %>%
@@ -132,3 +133,43 @@ t.test(viajesDiariosAntes$viajes[92:151],viajesDiariosDespues$viajes[1:60])
 
 plot_ly(viajesDiariosDespues, type = "scatter", mode = "line",
         x = ~ fecha_origen, y = ~viajes)
+
+# ----> Parte 10 <----
+
+usuarios<- read.csv("datasets/usuarios-ecobici-2018.csv")
+
+cat(paste("Catidad de usuarios en dataframe:",length(unique(recorridos$id_usuario)),
+          "\nCatidad de usuarios:",nrow(usuarios),
+          "\nCantidad de usuarios en ambos DF:",sum(unique(recorridos$id_usuario) %in% usuarios$usuario_id)))
+
+archivos<- c("datasets/usuarios-ecobici-2017.csv",
+             "datasets/usuarios-ecobici-2016.csv",
+             "datasets/usuarios-ecobici-2015.csv")
+for(archivo in archivos){
+    aux<- read.csv(archivo)
+    usuarios<- rbind(usuarios,aux)
+}
+
+cat(paste("Catidad de usuarios en dataframe:",length(unique(recorridos$id_usuario)),
+          "\nCatidad de usuarios:",nrow(usuarios),
+          "\nCantidad de usuarios en ambos DF:",sum(unique(recorridos$id_usuario) %in% usuarios$usuario_id)))
+rm(aux)
+gc()
+
+datosEdad<- merge(recorridos[recorridos$id_estacion_origen == 9 & recorridos$id_estacion_destino == 66,
+                             c("id_usuario","duracion_recorrido")],
+                  usuarios[,c("usuario_id","usuario_edad")],
+                  by.x = "id_usuario", by.y = "usuario_id")
+
+datosEdad$duracion_recorrido<- as.numeric(datosEdad$duracion_recorrido)
+
+fc_cor <- function(d,i){
+    d <- datosEdad[i,]
+    return(cor(d$duracion_recorrido,d$usuario_edad))
+}
+
+boot_cor <- boot(data = datosEdad, statistic = fc_cor, R = 1000)
+
+plot(boot_cor)
+
+boot.ci(boot.out = boot_cor, type = c("norm", "basic", "perc","bca"))
