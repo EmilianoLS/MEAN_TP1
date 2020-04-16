@@ -5,10 +5,17 @@ library(ggplot2)
 library(dplyr)
 library('rmarkdown')
 library(pwr)
+library(boot)
 
 setwd('C:/Users/elosasso/OneDrive - Universidad Torcuato Di Tella/Metodos estadisticos aplicados a negocios/TP1')
 
 df <- read.csv('recorridos-realizados-2018.csv')
+users_2018 <- read.csv('usuarios-ecobici-2018.csv')
+users_2017 <- read.csv('usuarios-ecobici-2017.csv')
+users_2016 <- read.csv('usuarios-ecobici-2016.csv')
+users_2015 <- read.csv('usuarios-ecobici-2015.csv')
+
+users <- rbind(users_2018,users_2017,users_2016,users_2015)
 
 head(df)
 colnames(df)
@@ -143,7 +150,7 @@ binom.test( x = nrow(filter(df,id_estacion_origen == 009, id_estacion_destino ==
 
 n = nrow(filter(df,id_estacion_origen == 009, id_estacion_destino == 066))
 
-mustar <- 0.2 #seq(from = 0.1, to=0.2, by=0.001)
+mustar <- seq(from = 0.1, to=0.2, by=0.001)
 
 xcrit <- qnorm(0.05)*sqrt((0.2*(1-0.2))/n)+0.2
 
@@ -152,11 +159,49 @@ beta <- 1-pnorm((xcrit-mustar)/sqrt((mustar*(1-mustar))/n))
 potencia <- 1-beta
 
 
-plot(mustar,potencia, ylim=c(0,1),type = "p", xlab= "mu*", ylab= "potencia", lwd=2)
-abline(h = potencia, lty = 2)
-text(0.15, potencia,  potencia,
-     cex=1, pos=3,col="red") 
+plot(mustar,potencia, ylim=c(0,1),type = "l", xlab= "mu*", ylab= "potencia", lwd=2)
+#abline(h = potencia, lty = 2)
+#text(0.15, potencia,  potencia,
+  #   cex=1, pos=3,col="red") 
 
+######################################################################################################################
 
+# Boostrap
 
+dim(users)
 
+# Chequeo que no haya usuarios duplicados 
+length(unique(users$usuario_id))
+
+# No pareciera haber
+
+dim(df);colnames(users)
+
+names(users)[1] <- 'id_usuario'
+df_with_users <- merge(x = df, y = users,by = 'id_usuario')
+df_with_users <- select(df_with_users, -c(fecha_alta,hora_alta))
+
+# Defino funcion de correlacion
+
+fc_cor <- function(d,i){
+  d <- df_with_users[i,]
+  return(cor(d$duracion_recorrido,d$usuario_edad)) # Uso duracion de recorrido y no la manual porque tiene missings
+}
+
+#chequeando que funciona
+
+fc_cor(df_with_users)
+
+#usamos el comando boot:
+
+set.seed(123) #si lo suprimo no puedo replicar los mismos resultados (variarían por la simulación)
+
+boot_cor <- boot(data = filter(df_with_users,id_estacion_origen == 009, id_estacion_destino == 066), statistic = fc_cor, R = 10000)
+boot_cor
+boot_cor$t #para ver las 1000 replicaciones
+sd(boot_cor$t) #el error estándar
+mean(boot_cor$t)-boot_cor$t0 #el sesgo
+#histograma y qqplot
+plot(boot_cor)
+#intervalo de confianza:
+boot.ci(boot.out = boot_cor, type = c("norm", "basic", "perc", "bca"))
