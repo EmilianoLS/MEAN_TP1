@@ -1,0 +1,265 @@
+Primero se cargan todas las librerias que se van a estar usando en el trabajo
+
+```{r}
+rm(list=ls())
+
+library(lubridate)
+library(ggplot2)
+library(dplyr)
+library('rmarkdown')
+library(pwr)
+library(boot)
+library(plotly)
+```
+```{r}
+options(scipen=999) #para evitar trabajar con notación científica
+```
+
+A continuacion se cargan los datos:
+
+  - La base de recorridos de bicicletas durante el 2018
+  - Los archivos de id_usuarios para los años 2015,2016,2017,2018
+
+```{r}
+
+setwd('C:/Users/elosasso/OneDrive - Universidad Torcuato Di Tella/Metodos estadisticos aplicados a negocios/TP1/MEAN_TP1')
+
+df <- read.csv('recorridos-realizados-2018.csv')
+
+users_2018 <- read.csv('usuarios-ecobici-2018.csv')
+users_2017 <- read.csv('usuarios-ecobici-2017.csv')
+users_2016 <- read.csv('usuarios-ecobici-2016.csv')
+users_2015 <- read.csv('usuarios-ecobici-2015.csv')
+
+users <- rbind(users_2018,users_2017,users_2016,users_2015)
+```
+
+```{r}
+
+str(df)
+
+```
+
+Se ven algunas variables que se declararon mal el tipo: fecha_origen_recorrido, duracion_recorrido y fecha_destino_recorrido. Se cambian a sus tipos correspondientes
+
+```{r}
+df$fecha_origen_recorrido <- as.POSIXct(strptime(df$fecha_origen_recorrido, format = "%Y-%m-%d %H:%M:%OS",
+                                      tz = "America/Argentina/Buenos_Aires"))
+
+df$duracion_recorrido <- as.numeric(df$duracion_recorrido, units = 'secs') #Hay que verificar si estan bien calculadas!
+
+df$fecha_destino_recorrido <- as.POSIXct(strptime(df$fecha_destino_recorrido, format = "%Y-%m-%d %H:%M:%OS",
+                                      tz = "America/Argentina/Buenos_Aires"))
+```
+Siempre es de mucho provecho contar con datos de tipo fecha. Por eso se generan nuevas variables para obtener el día, mes y la hora de la semana en la que se extrajeron las bicicletas.
+
+```{r}
+df$dia_de_semana_origen   <- wday(df$fecha_origen_recorrido, label = TRUE,
+                              abbr = FALSE)
+df$hora_del_dia_origen <- hour(df$fecha_origen_recorrido)
+
+df$mes_de_origen <- month(df$fecha_origen_recorrido, label = TRUE,
+                          abbr = FALSE)
+
+```
+
+```{r}
+head(select(df,dia_de_semana_origen,hora_del_dia_origen,mes_de_origen))
+```
+
+Punto 1: Análisis exploratorio
+------------------------------
+
+Se analizan algunos gráficos para entender la distribución de algunas métricas como la edad, el uso de las bicicletas, frecuencia, lugares, etc. 
+
+```{r}
+boxplot(df$duracion_recorrido, xlab = 'Duracion del recorrido (seg)', main = 'Distribucion del tiempo de uso', horizontal = TRUE)
+abline(v = median(df$duracion_recorrido), col = 'red', lty = 2)
+```
+Vemos que si bien existen outliers, lo normal es que una persona use una bicicleta hasta unos 3000/4000 segundos (~50 minutos/ 1 hora). Lo que tiene sentido porque es el tiempo permitido para cada recorrido.
+La explicación para tiempos mayores puede deberse a que durante los fines de semana se permitía un uso de hasta 2 horas por recorrido.
+
+
+Para entender si visualmente existe un horario en el que más se usen las bicicletas, se grafica la cantidad de extracciones por hora, para cada día de la semana.
+```{r}
+ggplot(data = df) + geom_bar(mapping = aes(x = hora_del_dia_origen)) + facet_wrap(~ dia_de_semana_origen) + labs(x = 'Hora del día') + ggtitle('Cantidad de extracciones por hora del día, según el día de la semana')
+```
+
+Se observa que en todos los días existe un cierto 'patron' bastante común. Los horarios picos son entre las 15:00 y las 20:00 horas, a partir de la cual baja el uso. Se observa un leve repunte en las primeras horas del día, pero en general, entre la 1:00 y las 5:00 am son los horarios más tranquilos. 
+
+Si bien tienen (aparentemente) el mismo comportamiento que durante los días de semana, vemos que durante los fines de semana cae el uso.
+
+Aprovechando que tenemos datos de fecha, observamos la cantidad de extracciones por mes.
+
+```{r}
+ggplot(data = df) + geom_bar(mapping = aes(y = mes_de_origen)) + labs(x = 'Cantidad de extracciones', y = 'Mes') + ggtitle('Cantidad de extracciones por mes')
+```
+
+
+Pareciera haber un mayor número de extracciones en los meses de agosto, septiembre y octubre, con un menor uso durante enero, febrero y marzo (podría explicarse por las vacaciones?)
+
+Otro dato interesante de obtener es la cantidad de extracciones por estación, para ver si hay alguna zona en particular con mayor movimiento, para eso creamos una tabla con las estaciones y sus ubicaciones, junto  con la cantidad de extracciones en cada una.
+
+
+```{r}
+mapa <- df %>% filter(complete.cases(lat_estacion_origen)) %>% group_by(nombre_estacion_origen, lat_estacion_origen, long_estacion_origen) %>% summarize(q = n()) %>% ungroup()
+mapa
+```
+
+Visualizamos en un mapa:
+
+```{r}
+
+library(leaflet)
+
+pal <- colorNumeric(c('blue','yellow','red'), domain = mapa$q)
+
+m <- leaflet(data = mapa) %>% 
+   addProviderTiles(providers$CartoDB.Positron) %>%
+  addCircleMarkers(lng=mapa$long_estacion_origen, lat=mapa$lat_estacion_origen,
+                   radius = 3,
+                   col = ~pal(q),
+                   stroke = FALSE,
+                   fillOpacity = 0.8) %>%
+  addLegend(pal = pal, values = ~q)
+m  # Print the map
+
+```
+
+Se ve que pocas estaciones superan las 25 mil extracciones, pero si puede verse que en las zonas de once, almagro, villa cresto, palermo, existe un número mayor de extracciones.
+
+Al mismo tiempo, las zonas de puerto madero y el sur de la capital poseen un menor número de extracciones.
+
+**NOTA: Notar que no están todas las estaciones que uno esperaría, esto fue porque muchos registros tenían NAs en sus valores de latitud y longitud, por lo que no pudieron ubicarse.**
+
+Para poder analizar los casos de los recorridos entre las estaciones Parque las heras y Billingurst primero verificamos qué tan común es el recorrido.
+
+```{r}
+
+df$misma_estacion <- df$nombre_estacion_origen == df$nombre_estacion_destino
+
+bicis = as.data.frame(df)
+
+bicis %>% filter((!is.na(id_estacion_origen)) & (!is.na(id_estacion_destino)) & (misma_estacion == FALSE)) %>% 
+  group_by(nombre_estacion_origen,nombre_estacion_destino) %>%  
+  summarize(count = n()) %>% arrange(desc(count)) %>% ungroup()
+
+bicis %>% filter((id_estacion_origen == 009) & (id_estacion_destino == 066)) %>% select(nombre_estacion_origen,nombre_estacion_destino) %>% 
+  group_by(nombre_estacion_origen,nombre_estacion_destino) %>% summarize(count = n()) %>% ungroup()
+
+```
+
+Vemos entonces que se hicieron 1091 viajes entre ambas estaciones, no es el viaje más hecho, pero si es uno bastante frecuente.
+
+**Apartado: Descubrimiento sobre el tiempo del recorrido**
+
+Dado que el punto solicita hacer un test de hipótesis sobre la duración del recorrido, buscamos comprobar que tan confiables eran los datos de 'duracion de recorrido' provisto por los datos.
+
+```{r}
+
+df$duracion_recorrido_manual <- as.numeric((df$fecha_destino_recorrido - df$fecha_origen_recorrido), units = 'secs')
+
+ggplot(filter(df,(id_estacion_origen == 009) & (id_estacion_destino == 066))) + 
+         geom_density(aes(x = duracion_recorrido_manual),fill = 'red', alpha = 0.3) +
+         geom_density(aes(x = duracion_recorrido),fill = 'green', alpha = 0.3) +
+         ggtitle('Distribucion de la duracion de los recorridos') + labs(x = 'Duracion de recorrido')
+```
+
+El grafico pareciera sugerir que ambas variables tienen medias distintas, por lo cual sospechamos que los datos provistos por el gobierno no están del todo acertados. Para confirmar las sospechas, realizamos un test de hipótesis.
+
+```{r}
+
+temp <- filter(df,(id_estacion_origen == 009) & (id_estacion_destino == 066) & (complete.cases(duracion_recorrido_manual)))
+
+t.test(temp$duracion_recorrido,temp$duracion_recorrido_manual, paired = TRUE, alternative = 'two.sided')
+```
+
+Evidentemente, **ambas medidas no son iguales**. Puntualmente, la variable *'duracion_recorrido'* provista por el gobierno, difiere de la duracion calculada manualmente en 298 segundos (~ 5 minutos) por *debajo*.
+
+En base a esta información, se va a realizar el test de hipótesis sober la variable 'duracion_recorrido_manual', porque se entiende que es más confiable y quedó demostrado que es significativamente diferente del valor originalmente provisto.
+
+**Prueba de hipótesis**
+
+**Hipótesis nula: La proporción de usuarios que tardan mas de 15 minutos en hacer el recorrido de la estacion 009 a la 066 es mayor o igual al 20%.**
+**Hipótesis alternativa: La proporción de usuarios que tardan mas de 15 minutos en hacer el recorrido de la estacion 009 a la 066 es menor al 20%.**
+
+Al tratarse de una proporción, primero creamos una columna *booleana* para indicar si la duración del recorrido fue mayor o menor a 15 minutos.
+A continuación, realizamos el test de hipótesi (con un nivel de significación del 5%).
+
+```{r}
+
+df$mas_15_min <- df$duracion_recorrido_manual > 15*60
+
+binom.test( x = nrow(filter(df,id_estacion_origen == 009, id_estacion_destino == 066,mas_15_min == TRUE)), 
+            n = nrow(filter(df,id_estacion_origen == 009, id_estacion_destino == 066)), 
+            p = 0.2, alternative = 'less')
+```
+
+El resultado del *p-value* es de 0.06669, con lo cual, para un nivel de confianza del 95%, no tenemos evidencia suficiente para refutar la hipótesis nula. En otras palabras, no puedo rechazar la posibilidad de que la proporción de usuarios que tardan más de 15 minutos es mayor al 20%
+
+
+**Evaluando la potencia del test**
+
+Ahora se evalúa la *potencia* del test, osea, la probabilidad de rechazar la hipótesis nula, siendo esta falsa.
+
+````{r}
+
+n = nrow(filter(df,id_estacion_origen == 009, id_estacion_destino == 066))
+
+mustar <- seq(from = 0.1, to=0.2, by=0.001)
+
+xcrit <- qnorm(0.05)*sqrt((0.2*(1-0.2))/n)+0.2
+
+beta <- 1-pnorm((xcrit-mustar)/sqrt((mustar*(1-mustar))/n))
+
+potencia <- 1-beta
+
+
+plot(mustar,potencia, ylim=c(0,1),type = "l", xlab= "mu*", ylab= "potencia", lwd=2)
+
+```
+
+Arriba se observa la curva de potencia para distintos valores de mu estrella, se observa que para una mu estrella cercana al 20% como sugería el problema, la potencia del test es inferior al 20%. Se entiende entonces que la probabilidad de rechazar la hipótesis nula suponiendo que esta sea falsa es bastante baja.
+
+A medida que suponemos que mi mu estrella se corre hacia valores inferiores, vemos que la potencia del test sube significativamente con unos pocos corrimientos. Por ejemplo, con una mu estrella de 0.17, la potencia del test pasaría a ser de un 80% aproximadamente.
+
+**Boostrapping**
+
+Para poder hacer este punto, se necesita conocer la edad de los usuarios, cosa que el dataset de los recorridos no tiene. Debemos primero unir la base de id de usuarios (que si tiene la información de la edad) con la de los recorridos.
+
+```{r}
+
+
+names(users)[1] <- 'id_usuario'
+
+# Creo un nuevo dataframe con el merge entre la informacion de las bicicletas y la de los usuarios
+
+df_with_users <- merge(x = df, y = users,by = 'id_usuario')
+df_with_users <- select(df_with_users, -c(fecha_alta,hora_alta))
+
+# Defino funcion de correlacion
+
+fc_cor <- function(d,i){
+  d <- df_with_users[i,]
+  return(cor(d$duracion_recorrido,d$usuario_edad)) # Uso duracion de recorrido y no la manual porque tiene missings
+}
+
+
+set.seed(123) # Me aseguro poder replicar los mismos resultados a posteriori
+
+boot_cor <- boot(data = filter(df_with_users,id_estacion_origen == 009, id_estacion_destino == 066), statistic = fc_cor, R = 10000)
+boot_cor
+
+print('Error estandar')
+sd(boot_cor$t) #el error estándar
+
+print('Sesgo')
+mean(boot_cor$t)-boot_cor$t0 #el sesgo
+
+#histograma y qqplot
+plot(boot_cor)
+
+#intervalo de confianza:
+boot.ci(boot.out = boot_cor, type = c("norm", "basic", "perc", "bca"))
+
+```
