@@ -76,11 +76,13 @@ Se analizan algunos gráficos para entender la distribución de algunas métrica
 boxplot(df$duracion_recorrido, xlab = 'Duracion del recorrido (seg)', main = 'Distribucion del tiempo de uso', horizontal = TRUE)
 abline(v = median(df$duracion_recorrido), col = 'red', lty = 2)
 ```
+
 Vemos que si bien existen outliers, lo normal es que una persona use una bicicleta hasta unos 3000/4000 segundos (~50 minutos/ 1 hora). Lo que tiene sentido porque es el tiempo permitido para cada recorrido.
 La explicación para tiempos mayores puede deberse a que durante los fines de semana se permitía un uso de hasta 2 horas por recorrido.
 
 
 Para entender si visualmente existe un horario en el que más se usen las bicicletas, se grafica la cantidad de extracciones por hora, para cada día de la semana.
+
 ```{r}
 ggplot(data = df) + geom_bar(mapping = aes(x = hora_del_dia_origen)) + facet_wrap(~ dia_de_semana_origen) + labs(x = 'Hora del día') + ggtitle('Cantidad de extracciones por hora del día, según el día de la semana')
 ```
@@ -151,7 +153,8 @@ bicis %>% filter((id_estacion_origen == 009) & (id_estacion_destino == 066)) %>%
 
 Vemos entonces que se hicieron 1091 viajes entre ambas estaciones, no es el viaje más hecho, pero si es uno bastante frecuente.
 
-**Apartado: Descubrimiento sobre el tiempo del recorrido**
+Apartado: Descubrimiento sobre el tiempo del recorrido
+------------------------------------------------------
 
 Dado que el punto solicita hacer un test de hipótesis sobre la duración del recorrido, buscamos comprobar que tan confiables eran los datos de 'duracion de recorrido' provisto por los datos.
 
@@ -178,9 +181,11 @@ Evidentemente, **ambas medidas no son iguales**. Puntualmente, la variable *'dur
 
 En base a esta información, se va a realizar el test de hipótesis sober la variable 'duracion_recorrido_manual', porque se entiende que es más confiable y quedó demostrado que es significativamente diferente del valor originalmente provisto.
 
-**Prueba de hipótesis**
+Prueba de hipótesis
+-------------------
 
 **Hipótesis nula: La proporción de usuarios que tardan mas de 15 minutos en hacer el recorrido de la estacion 009 a la 066 es mayor o igual al 20%.**
+
 **Hipótesis alternativa: La proporción de usuarios que tardan mas de 15 minutos en hacer el recorrido de la estacion 009 a la 066 es menor al 20%.**
 
 Al tratarse de una proporción, primero creamos una columna *booleana* para indicar si la duración del recorrido fue mayor o menor a 15 minutos.
@@ -198,7 +203,8 @@ binom.test( x = nrow(filter(df,id_estacion_origen == 009, id_estacion_destino ==
 El resultado del *p-value* es de 0.06669, con lo cual, para un nivel de confianza del 95%, no tenemos evidencia suficiente para refutar la hipótesis nula. En otras palabras, no puedo rechazar la posibilidad de que la proporción de usuarios que tardan más de 15 minutos es mayor al 20%
 
 
-**Evaluando la potencia del test**
+Evaluando la potencia del test
+------------------------------
 
 Ahora se evalúa la *potencia* del test, osea, la probabilidad de rechazar la hipótesis nula, siendo esta falsa.
 
@@ -223,7 +229,8 @@ Arriba se observa la curva de potencia para distintos valores de mu estrella, se
 
 A medida que suponemos que mi mu estrella se corre hacia valores inferiores, vemos que la potencia del test sube significativamente con unos pocos corrimientos. Por ejemplo, con una mu estrella de 0.17, la potencia del test pasaría a ser de un 80% aproximadamente.
 
-**Boostrapping**
+Boostrapping
+------------
 
 Para poder hacer este punto, se necesita conocer la edad de los usuarios, cosa que el dataset de los recorridos no tiene. Debemos primero unir la base de id de usuarios (que si tiene la información de la edad) con la de los recorridos.
 
@@ -249,12 +256,6 @@ set.seed(123) # Me aseguro poder replicar los mismos resultados a posteriori
 
 boot_cor <- boot(data = filter(df_with_users,id_estacion_origen == 009, id_estacion_destino == 066), statistic = fc_cor, R = 10000)
 boot_cor
-
-print('Error estandar')
-sd(boot_cor$t) #el error estándar
-
-print('Sesgo')
-mean(boot_cor$t)-boot_cor$t0 #el sesgo
 
 #histograma y qqplot
 plot(boot_cor)
