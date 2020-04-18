@@ -313,22 +313,133 @@ Punto 7
 
 Punto 8
 --------
+```{r}
+#generacion variables
+recorridos$fecha_orig = strptime(recorridos$fecha_origen_recorrido , 
+                           format = "%Y-%m-%d %H:%M:%OS",
+                           tz = "America/Argentina/Buenos_Aires")
+recorridos$fecha_dest = strptime(recorridos$fecha_destino_recorrido, 
+                           format = "%Y-%m-%d %H:%M:%OS",
+                           tz = "America/Argentina/Buenos_Aires")
+recorridos$duracion = as.numeric(recorridos$fecha_dest - recorridos$fecha_orig, units = "mins")
 
+#intervalos
 
+Mujeres_duracion =t.test(recorridos [recorridos$genero_usuario == "F", "duracion"], 
+       conf.level = 0.95)$conf.int
 
+Hombres_duracion = t.test(recorridos [recorridos$genero_usuario == "M", "duracion"], 
+       conf.level = 0.95)$conf.int
 
+Mujeres_duracion
+Hombres_duracion
 
+```
+Con un 95% de confianza se puede afirmar que existen diferencias significativas en la duración del recorrido entre hombres y mujeres dado que los intervalos de confianza no
+tienen solapamiento. El intervalo de confianza de la duración de recorrido de mujeres es (27,6 : 27,7) mientras que el de los hombres (24,99 : 25,05)
 
+```{r}
+recorridos$fin_de_semana = (recorridos$dia_semana %in% c("domingo","sábado"))
 
+#IC Proporcion mujeres dias de semana
+prop_muj_sem = binom.test(c(table(recorridos$fin_de_semana,recorridos$genero_usuario)[1,1],
+             table(recorridos$fin_de_semana,recorridos$genero_usuario)[1,2]), 
+           conf.level = 0.95)$conf.int
 
+#IC Proporcion mujeres fin de semana
+prop_muj_finde = binom.test(c(table(recorridos$fin_de_semana,recorridos$genero_usuario)[2,1],
+             table(recorridos$fin_de_semana,recorridos$genero_usuario)[2,2]), 
+             conf.level = 0.95)$conf.int
+prop_muj_sem
+prop_muj_finde
+```
+Con un 95% de confianza se puede afirmar que existen diferencias significativas en la proporción de recorridos realizados por mujeres durante días de semana en contraposición a fines de semana. Se puede hacer esta afirmación dado que los intervalos de confianza de estas proporciones no se solapan.
+Siendo mayor la proporción de recorridos realizados por mujeres los fines de semana que durante los días de semana. 
+
+```{r}
+recorridos$hora = as.numeric(strftime(recorridos$fecha_origen_recorrido,format = "%H"))
+recorridos$madrugada = recorridos$hora %in% (0:4)
+
+#IC hombres madrugada
+hombres_madrugada = binom.test(c(table(recorridos$madrugada,recorridos$genero_usuario)[2,2],
+             table(recorridos$madrugada,recorridos$genero_usuario)[2,1]), 
+           conf.level = 0.95)$conf.int
+
+#IC hombres dia
+hombres_resto_dia =binom.test(c(table(recorridos$madrugada,recorridos$genero_usuario)[1,2],
+             table(recorridos$madrugada,recorridos$genero_usuario)[1,1]), 
+           conf.level = 0.95)$conf.int
+hombres_madrugada
+hombres_resto_dia
+#Existe una diferencia significativa en la proporción de hombres en la madrugada vs el resto del dia.
+# Siendo mayor en la madrugada
+```
+Se puede afirmar con un 95% de confianza que existen diferencias significativas entre la proporción de recorridos realizados por hombres durante la madrugada (desde 00:00 am hasta 04:59 am) en contraposición al resto del día. Podemos realizar esta afirmación dado que los intervalos de confianza no se solapan.
+Siendo mayor la proporción de recorridos realizados por hombres durante la madrugada que durante el resto del día.
 
 Punto 9
 -------
+```{r}
+# Para resolver mensaje de error luego de ejecutar left_join
+recorridos$fecha_orig = as.POSIXct(recorridos$fecha_orig) 
+recorridos$fecha_dest = as.POSIXct(recorridos$fecha_dest)
 
+# se detectan 8 "usuario_id" duplicados
+usuarios_duplicados = users%>% group_by(usuario_id)%>% summarise (cuenta = n())%>%
+  filter(cuenta > 1)
 
+#elimino duplicados. De esta forma los excluyo del análisis
+users = users[!users$usuario_id %in% usuarios_duplicados$usuario_id,]
 
+recorridos = left_join(recorridos, users, by = c("id_usuario"="usuario_id"))
 
+#Se encuentra 662.719 viajes sin información de usuario.
+summary(recorridos$usuario_edad)
 
+recorridos$Mayor35 = recorridos$usuario_edad > 35
+
+Manores35_duracion =t.test(recorridos [recorridos$Mayor35 == FALSE & 
+                    !is.na(recorridos$usuario_edad),"duracion"], 
+                    conf.level = 0.95)$conf.int
+
+Mayores35_duracion =t.test(recorridos [recorridos$Mayor35 == TRUE & 
+                    !is.na(recorridos$usuario_edad),"duracion"], 
+                    conf.level = 0.95)$conf.int
+Manores35_duracion
+Mayores35_duracion
+```
+Se puede afirmar con un 95% de confianza que existen diferencias significativas entre la duración de los recorridos de las personas menores de 35 años en contraposición a los mayores de esta edad. Se puede realizar esta afirmación dado que los intervalos de confianza no se solapan.
+Se observa una duración en los recorridos levemente mayor en el caso de los mayores de 35 años.
+
+```{r}
+menores35_finde = binom.test(c(table(recorridos$fin_de_semana,recorridos$Mayor35)[2,1],
+             table(recorridos$fin_de_semana,recorridos$Mayor35)[2,2]), 
+           conf.level = 0.95)$conf.int
+
+#IC Proporcion menores de 35 lun vie 
+menores35_LunVie = binom.test(c(table(recorridos$fin_de_semana,recorridos$Mayor35)[1,1],
+             table(recorridos$fin_de_semana,recorridos$Mayor35)[1,2]), 
+           conf.level = 0.95)$conf.int
+menores35_finde
+menores35_LunVie
+```
+Se puede afirmar con un 95% de confianza que existen diferencias significativas en la proporción de recorridos realizados por menores de 35 años durante el fin de semana en contraposición al resto de la semana. 
+Siendo mayor la proporción durante el fin de semana.
+
+```{r}
+#IC menores 35 en la madrugada
+menores35_madrugada = binom.test(c(table(recorridos$madrugada,recorridos$Mayor35)[2,1],
+             table(recorridos$madrugada,recorridos$Mayor35)[2,2]), 
+           conf.level = 0.95)$conf.int
+
+#IC menores 35 resto del dia
+menores35_RestoDia = binom.test(c(table(recorridos$madrugada,recorridos$Mayor35)[1,1],
+             table(recorridos$madrugada,recorridos$Mayor35)[1,2]), 
+           conf.level = 0.95)$conf.int
+menores35_madrugada
+menores35_RestoDia
+```
+Se puede afirmar con un 95% de confianza que existen diferencias significativas entre la proporción de recorridos realizados por menores de 35 durante la madrugada y el resto del día. Siendo mayor la proporción durante la madrugada.
 
 
 
