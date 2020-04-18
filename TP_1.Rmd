@@ -1,6 +1,6 @@
 Primero se cargan todas las librerias que se van a estar usando en el trabajo
 
-```{r}
+```{r, cache=TRUE, warning=FALSE,echo=FALSE, results='hide'}
 rm(list=ls())
 
 library(lubridate)
@@ -10,8 +10,9 @@ library('rmarkdown')
 library(pwr)
 library(boot)
 library(plotly)
-```
-```{r}
+library(knitr)
+library(leaflet)
+
 options(scipen=999) #para evitar trabajar con notación científica
 ```
 
@@ -20,11 +21,11 @@ A continuacion se cargan los datos:
   - La base de recorridos de bicicletas durante el 2018
   - Los archivos de id_usuarios para los años 2015,2016,2017,2018
 
-```{r}
+```{r,cache=TRUE, warning=FALSE}
 
-setwd('C:/Users/elosasso/OneDrive - Universidad Torcuato Di Tella/Metodos estadisticos aplicados a negocios/TP1/MEAN_TP1')
+setwd('datasets/')
 
-df <- read.csv('recorridos-realizados-2018.csv')
+recorridos <- read.csv('recorridos-realizados-2018.csv')
 
 users_2018 <- read.csv('usuarios-ecobici-2018.csv')
 users_2017 <- read.csv('usuarios-ecobici-2017.csv')
@@ -34,37 +35,37 @@ users_2015 <- read.csv('usuarios-ecobici-2015.csv')
 users <- rbind(users_2018,users_2017,users_2016,users_2015)
 ```
 
-```{r}
+```{r,cache=TRUE}
 
-str(df)
+str(recorridos)
 
 ```
 
 Se ven algunas variables que se declararon mal el tipo: fecha_origen_recorrido, duracion_recorrido y fecha_destino_recorrido. Se cambian a sus tipos correspondientes
 
-```{r}
-df$fecha_origen_recorrido <- as.POSIXct(strptime(df$fecha_origen_recorrido, format = "%Y-%m-%d %H:%M:%OS",
+```{r,cache=TRUE}
+recorridos$fecha_origen_recorrido <- as.POSIXct(strptime(recorridos$fecha_origen_recorrido, format = "%Y-%m-%d %H:%M:%OS",
                                       tz = "America/Argentina/Buenos_Aires"))
 
-df$duracion_recorrido <- as.numeric(df$duracion_recorrido, units = 'secs') #Hay que verificar si estan bien calculadas!
+recorridos$duracion_recorrido <- as.numeric(recorridos$duracion_recorrido, units = 'secs') #Hay que verificar si estan bien calculadas!
 
-df$fecha_destino_recorrido <- as.POSIXct(strptime(df$fecha_destino_recorrido, format = "%Y-%m-%d %H:%M:%OS",
+recorridos$fecha_destino_recorrido <- as.POSIXct(strptime(recorridos$fecha_destino_recorrido, format = "%Y-%m-%d %H:%M:%OS",
                                       tz = "America/Argentina/Buenos_Aires"))
 ```
 Siempre es de mucho provecho contar con datos de tipo fecha. Por eso se generan nuevas variables para obtener el día, mes y la hora de la semana en la que se extrajeron las bicicletas.
 
-```{r}
-df$dia_de_semana_origen   <- wday(df$fecha_origen_recorrido, label = TRUE,
+```{r,cache=TRUE}
+recorridos$dia_de_semana_origen   <- wday(recorridos$fecha_origen_recorrido, label = TRUE,
                               abbr = FALSE)
-df$hora_del_dia_origen <- hour(df$fecha_origen_recorrido)
+recorridos$hora_del_dia_origen <- hour(recorridos$fecha_origen_recorrido)
 
-df$mes_de_origen <- month(df$fecha_origen_recorrido, label = TRUE,
+recorridos$mes_de_origen <- month(recorridos$fecha_origen_recorrido, label = TRUE,
                           abbr = FALSE)
 
 ```
 
-```{r}
-head(select(df,dia_de_semana_origen,hora_del_dia_origen,mes_de_origen))
+```{r,cache=TRUE}
+kable(head(select(recorridos,dia_de_semana_origen,hora_del_dia_origen,mes_de_origen)))
 ```
 
 Punto 1: Análisis exploratorio
@@ -72,9 +73,9 @@ Punto 1: Análisis exploratorio
 
 Se analizan algunos gráficos para entender la distribución de algunas métricas como la edad, el uso de las bicicletas, frecuencia, lugares, etc. 
 
-```{r}
-boxplot(df$duracion_recorrido, xlab = 'Duracion del recorrido (seg)', main = 'Distribucion del tiempo de uso', horizontal = TRUE)
-abline(v = median(df$duracion_recorrido), col = 'red', lty = 2)
+```{r,cache=TRUE}
+boxplot(recorridos$duracion_recorrido, xlab = 'Duracion del recorrido (seg)', main = 'Distribucion del tiempo de uso', horizontal = TRUE)
+abline(v = median(recorridos$duracion_recorrido), col = 'red', lty = 2)
 ```
 
 Vemos que si bien existen outliers, lo normal es que una persona use una bicicleta hasta unos 3000/4000 segundos (~50 minutos/ 1 hora). Lo que tiene sentido porque es el tiempo permitido para cada recorrido.
@@ -83,8 +84,8 @@ La explicación para tiempos mayores puede deberse a que durante los fines de se
 
 Para entender si visualmente existe un horario en el que más se usen las bicicletas, se grafica la cantidad de extracciones por hora, para cada día de la semana.
 
-```{r}
-ggplot(data = df) + geom_bar(mapping = aes(x = hora_del_dia_origen)) + facet_wrap(~ dia_de_semana_origen) + labs(x = 'Hora del día') + ggtitle('Cantidad de extracciones por hora del día, según el día de la semana')
+```{r,cache=TRUE}
+ggplot(data = recorridos) + geom_bar(mapping = aes(x = hora_del_dia_origen)) + facet_wrap(~ dia_de_semana_origen) + labs(x = 'Hora del día') + ggtitle('Cantidad de extracciones por hora del día, según el día de la semana')
 ```
 
 Se observa que en todos los días existe un cierto 'patron' bastante común. Los horarios picos son entre las 15:00 y las 20:00 horas, a partir de la cual baja el uso. Se observa un leve repunte en las primeras horas del día, pero en general, entre la 1:00 y las 5:00 am son los horarios más tranquilos. 
@@ -93,8 +94,8 @@ Si bien tienen (aparentemente) el mismo comportamiento que durante los días de 
 
 Aprovechando que tenemos datos de fecha, observamos la cantidad de extracciones por mes.
 
-```{r}
-ggplot(data = df) + geom_bar(mapping = aes(y = mes_de_origen)) + labs(x = 'Cantidad de extracciones', y = 'Mes') + ggtitle('Cantidad de extracciones por mes')
+```{r,cache=TRUE}
+ggplot(data = recorridos) + geom_bar(mapping = aes(y = mes_de_origen)) + labs(x = 'Cantidad de extracciones', y = 'Mes') + ggtitle('Cantidad de extracciones por mes')
 ```
 
 
@@ -103,17 +104,14 @@ Pareciera haber un mayor número de extracciones en los meses de agosto, septiem
 Otro dato interesante de obtener es la cantidad de extracciones por estación, para ver si hay alguna zona en particular con mayor movimiento, para eso creamos una tabla con las estaciones y sus ubicaciones, junto  con la cantidad de extracciones en cada una.
 
 
-```{r}
-mapa <- df %>% filter(complete.cases(lat_estacion_origen)) %>% group_by(nombre_estacion_origen, lat_estacion_origen, long_estacion_origen) %>% summarize(q = n()) %>% ungroup()
+```{r,cache=TRUE}
+mapa <- recorridos %>% filter(complete.cases(lat_estacion_origen)) %>% group_by(nombre_estacion_origen, lat_estacion_origen, long_estacion_origen) %>% summarize(q = n()) %>% ungroup()
 mapa
 ```
 
 Visualizamos en un mapa:
 
-```{r}
-
-library(leaflet)
-
+```{r,cache=TRUE}
 pal <- colorNumeric(c('blue','yellow','red'), domain = mapa$q)
 
 m <- leaflet(data = mapa) %>% 
@@ -136,11 +134,11 @@ Al mismo tiempo, las zonas de puerto madero y el sur de la capital poseen un men
 
 Para poder analizar los casos de los recorridos entre las estaciones Parque las heras y Billingurst primero verificamos qué tan común es el recorrido.
 
-```{r}
+```{r,cache=TRUE}
 
-df$misma_estacion <- df$nombre_estacion_origen == df$nombre_estacion_destino
+recorridos$misma_estacion <- recorridos$nombre_estacion_origen == recorridos$nombre_estacion_destino
 
-bicis = as.data.frame(df)
+bicis = as.data.frame(recorridos)
 
 bicis %>% filter((!is.na(id_estacion_origen)) & (!is.na(id_estacion_destino)) & (misma_estacion == FALSE)) %>% 
   group_by(nombre_estacion_origen,nombre_estacion_destino) %>%  
@@ -158,11 +156,11 @@ Apartado: Descubrimiento sobre el tiempo del recorrido
 
 Dado que el punto solicita hacer un test de hipótesis sobre la duración del recorrido, buscamos comprobar que tan confiables eran los datos de 'duracion de recorrido' provisto por los datos.
 
-```{r}
+```{r,cache=TRUE, warning=FALSE}
 
-df$duracion_recorrido_manual <- as.numeric((df$fecha_destino_recorrido - df$fecha_origen_recorrido), units = 'secs')
+recorridos$duracion_recorrido_manual <- as.numeric((recorridos$fecha_destino_recorrido - recorridos$fecha_origen_recorrido), units = 'secs')
 
-ggplot(filter(df,(id_estacion_origen == 009) & (id_estacion_destino == 066))) + 
+ggplot(filter(recorridos,(id_estacion_origen == 009) & (id_estacion_destino == 066))) + 
          geom_density(aes(x = duracion_recorrido_manual),fill = 'red', alpha = 0.3) +
          geom_density(aes(x = duracion_recorrido),fill = 'green', alpha = 0.3) +
          ggtitle('Distribucion de la duracion de los recorridos') + labs(x = 'Duracion de recorrido')
@@ -170,9 +168,9 @@ ggplot(filter(df,(id_estacion_origen == 009) & (id_estacion_destino == 066))) +
 
 El grafico pareciera sugerir que ambas variables tienen medias distintas, por lo cual sospechamos que los datos provistos por el gobierno no están del todo acertados. Para confirmar las sospechas, realizamos un test de hipótesis.
 
-```{r}
+```{r,cache=TRUE}
 
-temp <- filter(df,(id_estacion_origen == 009) & (id_estacion_destino == 066) & (complete.cases(duracion_recorrido_manual)))
+temp <- filter(recorridos,(id_estacion_origen == 009) & (id_estacion_destino == 066) & (complete.cases(duracion_recorrido_manual)))
 
 t.test(temp$duracion_recorrido,temp$duracion_recorrido_manual, paired = TRUE, alternative = 'two.sided')
 ```
@@ -181,36 +179,150 @@ Evidentemente, **ambas medidas no son iguales**. Puntualmente, la variable *'dur
 
 En base a esta información, se va a realizar el test de hipótesis sober la variable 'duracion_recorrido_manual', porque se entiende que es más confiable y quedó demostrado que es significativamente diferente del valor originalmente provisto.
 
+Levantando las altas del 2018 y los recorridos del 2018:
+```{r, cache=TRUE}
+
+summary(users_2018)
+dim(users_2018)
+prop.table(table(users_2018$usuario_sexo))
+
+#Creo una columna que indique el dia de la semana en el que se retiro la bici.
+recorridos$dia_semana <- as.factor(strftime(recorridos$fecha_origen_recorrido, "%A"))
+
+summary(recorridos)
+dim(recorridos)
+prop.table(table(recorridos$genero_usuario))
+prop.table(table(recorridos$dia_semana))
+```
+Respecto a las altas:
+Vemos que en el 2018 se dieron de alta 56182 usuarios, de los cuales aproximadamente el 46% es femenino y el 54% masculino. El dia donde mas altas se dieron fue el 08/10/2018. La hora en la cual m?s usuarios se dan de alta es a las 5:57:45. La edad promedio de los usuarios es de 33 a?os.
+
+Respecto a los recorridos:
+Vemos que en el 2018 se hicieron 2619968 recorridos, que tanto el origen como el destino m?s comun se da en la Facultad de Medicina y que las mujeres hicieron aproximadamente el 28% de los recorridos, mientras que los hombres el 72%. El d?a de la semana en el que mas bicis son retiradas es el miercoles.
+
 
 Punto dos
 ---------
+```{r,cache=TRUE}
+recorridos$fecha_origen_auxiliar <- as.factor(strptime(recorridos$fecha_origen_recorrido,
+                                                       format = "%Y-%m-%d",
+                                                       tz = "America/Argentina/Buenos_Aires"))
 
+usuarios_diarios_anio <- recorridos %>% group_by(fecha_origen_auxiliar) %>% summarise(total = length(dia_semana)) %>% ungroup()
+usuarios_diarios_anio$total <- as.numeric(usuarios_diarios_anio$total)
+usuarios_diarios_anio$dia_semana <- as.factor(strftime(usuarios_diarios_anio$fecha_origen_auxiliar, "%A"))
+tab <- usuarios_diarios_anio %>% group_by(dia_semana) %>% summarise(mu = mean(total)) %>% ungroup()
+tab$z <- usuarios_diarios_anio %>% group_by(dia_semana) %>% summarise(mu = qt(0.975, length(total) - 1)) %>% ungroup()
+tab$std <- usuarios_diarios_anio %>% group_by(dia_semana) %>% summarise(mu = sd(total)/sqrt(length(total))) %>% ungroup()
+tab$lim_inf <- tab$mu - (tab$z$mu*tab$std$mu)
+tab$lim_sup <- tab$mu + (tab$z$mu*tab$std$mu)
 
+tab$dia_semana <- factor(tab$dia_semana, levels = c("lunes","martes","mi?rcoles","jueves","viernes","s?bado","domingo"))
+grafIC <- ggplot(data = tab) + geom_pointrange(mapping = aes(x = dia_semana, y = mu, ymin = lim_inf, ymax = lim_sup)) + geom_errorbar(mapping = aes(x = dia_semana, ymin = lim_inf, ymax = lim_sup))
 
-
-
-
-
-
-
-
+grafIC
+```
+En el gr?fico que muestra los intervalos de confianza de la cantidad media de usuarios por cada dia de la semana encontramos evidencia estadistica de una estacionalidad en el uso de las bicis los dias de semana (lunes a viernes), donde vemos que los IC se solapan y son superiores a los de los dias de fin de semana (sabado y domingo).
 
 
 Punto tres
 ----------
+```{r, cache=TRUE}
+feriados <- c("2018-01-01", "2018-02-12", "2018-02-13", "2018-03-24", "2018-03-29", "2018-03-30",
+              "2018-04-02", "2018-04-30", "2018-05-01", "2018-05-25", "2018-06-17", "2018-06-20",
+              "2018-07-09", "2018-08-20", "2018-09-15", "2018-10-19", "2018-12-08", "2018-12-24",
+              "2018-12-25", "2018-12-31")
+usuarios_diarios_anio$es_feriado <- factor(ifelse(usuarios_diarios_anio$fecha_origen_auxiliar %in% feriados,
+                                                 1, 0))
 
+tab <- usuarios_diarios_anio %>% filter(es_feriado == 0) %>% group_by(dia_semana) %>% summarise(mu = mean(total)) %>% ungroup()
+tab$z <- usuarios_diarios_anio %>% filter(es_feriado == 0) %>% group_by(dia_semana) %>% summarise(mu = qt(0.975, length(total) - 1)) %>% ungroup()
+tab$std <- usuarios_diarios_anio %>% filter(es_feriado == 0) %>% group_by(dia_semana) %>% summarise(mu = sd(total)/sqrt(length(total))) %>% ungroup()
+tab$lim_inf <- tab$mu - (tab$z$mu*tab$std$mu)
+tab$lim_sup <- tab$mu + (tab$z$mu*tab$std$mu)
 
+tab$dia_semana <- factor(tab$dia_semana, levels = c("lunes","martes","mi?rcoles","jueves","viernes","s?bado","domingo"))
+grafIC_sin_feriados <- ggplot(data = tab) + geom_pointrange(mapping = aes(x = dia_semana, y = mu, ymin = lim_inf, ymax = lim_sup)) + geom_errorbar(mapping = aes(x = dia_semana, ymin = lim_inf, ymax = lim_sup))
 
-
-
-
-
+grafIC_sin_feriados
+```
+Si descontamos del analisis los dias que fueron feriados vemos que la media de uso diario de bicis aumenta en general pero se mantiene la estacionalidad los dias de semana (lunes a viernes).
 
 
 Punto 4
 -------
 
+Para encarar este problema primero se realizo un extracto de los datos con información de todos los viajes realizados por este usuario, con la finalidad de obtener los kilómetros entre cada una de las estaciones.
 
+```{r, cache=TRUE}
+posUsuario<- recorridos$id_usuario == 606320
+recorridosCiclista<- recorridos[posUsuario,] %>%
+    group_by(id_estacion_origen,lat_estacion_origen,long_estacion_origen,
+             id_estacion_destino,lat_estacion_destino,long_estacion_destino) %>%
+    summarise(recorridos = length(id_estacion_origen))
+recorridosCiclista<- as.data.frame(recorridosCiclista)
+recorridosCiclista<- recorridosCiclista[complete.cases(recorridosCiclista),]
+kable(head(recorridosCiclista))
+```
+
+Luego se busco la distancia entre cada uno de los puntos en [Google Maps](https://www.google.com.ar/maps), y se agrego esta información al datadrame, y finalmente se calculo la media armónica y la media aritmética de la velocidad para este usuario.
+
+```{r, cache=TRUE}
+recorridosCiclista$kilometros<- 0
+recorridosCiclista$kilometros[1] <- 3.5
+recorridosCiclista$kilometros[2] <- 2.6
+recorridosCiclista$kilometros[3] <- 2.1
+recorridosCiclista$kilometros[4] <- 2.1
+recorridosCiclista$kilometros[5] <- 0.9
+recorridosCiclista$kilometros[6] <- 1.5
+recorridosCiclista$kilometros[7] <- 3.7
+recorridosCiclista$kilometros[8] <- 2.9
+recorridosCiclista$kilometros[9] <- 0.9
+recorridosCiclista$kilometros[11] <- 2.1
+recorridosCiclista$kilometros[12] <- 1.8
+recorridosCiclista$kilometros[13] <- 0.65
+recorridosCiclista$kilometros[14] <- 3.9
+recorridosCiclista$kilometros[15] <- 0.9
+recorridosCiclista$kilometros[16] <- 3.0
+recorridosCiclista$kilometros[17] <- 1.3
+recorridosCiclista$kilometros[18] <- 3.7
+recorridosCiclista$kilometros[19] <- 3
+recorridosCiclista$kilometros[20] <- 2.9
+recorridosCiclista$kilometros[21] <- 2.8
+recorridosCiclista$kilometros[22] <- 2.4
+recorridosCiclista$kilometros[23] <- 1.1
+recorridosCiclista$kilometros[24] <- 3.1
+recorridosCiclista$kilometros[25] <- 2.9
+recorridosCiclista$kilometros[26] <- 2.9
+recorridosCiclista$kilometros[27] <- 2
+
+recorridos$velocidad<- 0
+for(pos in which(posUsuario)){
+    if(is.na(recorridos$id_estacion_origen[pos]) | is.na(recorridos$id_estacion_destino[pos])){
+        next
+    }
+    duracion<- as.numeric(recorridos$duracion_recorrido[pos])/3600
+    posRuta<- recorridosCiclista$id_estacion_origen == recorridos$id_estacion_origen[pos] &
+        recorridosCiclista$id_estacion_destino == recorridos$id_estacion_destino[pos]
+    kilometros<- recorridosCiclista$kilometros[posRuta]
+    recorridos$velocidad[pos]<- kilometros / duracion
+}
+posUsuario<- posUsuario & recorridos$velocidad > 0
+mediaArmonica<- 1/mean(1/recorridos$velocidad[posUsuario])
+mediaAritmetica<- mean(recorridos$velocidad[posUsuario])
+```
+
+Como es de suponer la media armónica es menor a la aritmética, siendo estas de `round(mediaArmonica,2)` km/h y de `r round(mediaAritmetica,2)` km/h respectivamente.
+
+En estos casos es recomendable usar la media armónica debido a que es menos sensible a los altos valores de la muestra, mientras que le da mayor importancia a los valores pequeños, y, si se ve el histograma de las velocidades, estas suelen tener colas alargadas hacia grandes velocidades las cuales distorcionan la media aritmética.
+
+```{r,cache=TRUE,warning=FALSE}
+plot_ly(recorridos[posUsuario,], x = ~velocidad,type = "histogram", histnorm = "probability", 
+        name = "Distribución") %>%
+    add_lines(x = rep(mediaAritmetica,2), y = c(0,0.32), name = "Media Aritmética") %>%
+    add_lines(x = rep(mediaArmonica,2), y = c(0,0.32), name = "Media Armónica")
+
+```
 
 
 Prueba de hipótesis
@@ -223,10 +335,10 @@ Prueba de hipótesis
 Al tratarse de una proporción, primero creamos una columna *booleana* para indicar si la duración del recorrido fue mayor o menor a 15 minutos.
 A continuación, realizamos el test de hipótesi (con un nivel de significación del 5%).
 
-```{r}
-df$mas_15_min <- df$duracion_recorrido_manual > 15*60
+```{r,cache=TRUE}
+recorridos$mas_15_min <- recorridos$duracion_recorrido_manual > 15*60
 
-subsample <- filter(df, complete.cases(duracion_recorrido_manual))
+subsample <- filter(recorridos, complete.cases(duracion_recorrido_manual))
 
 n = nrow(filter(subsample,id_estacion_origen == 009, id_estacion_destino == 066))
 
@@ -243,10 +355,7 @@ pvalor <- pt(zstat,df=n-1,lower.tail=TRUE);pvalor
 
 Tambien puede calcularse directamente con un binom.test:
 
-```{r}
-
-#df$mas_15_min <- df$duracion_recorrido_manual > 15*60
-
+```{r,cache=TRUE}
 binom.test( x = nrow(filter(subsample,id_estacion_origen == 009, id_estacion_destino == 066,mas_15_min == TRUE)), 
             n = nrow(filter(subsample,id_estacion_origen == 009, id_estacion_destino == 066)), 
             p = 0.2, alternative = 'less')
@@ -261,7 +370,7 @@ Evaluando la potencia del test
 Ahora se evalúa la *potencia* del test, osea, la probabilidad de rechazar la hipótesis nula, siendo esta falsa.
 
 
-```{r}
+```{r,cache=TRUE}
 
 pstar <- 0.19
 
@@ -277,7 +386,7 @@ potencia <- 1 - beta; potencia
 
 Con el resultado anterior, se obtuvo la potencia del test, ahora observamos que ocurre con la curva de potencia en la medida que variamos pstar:
 
-````{r}
+```{r,cache=TRUE}
 
 
 
@@ -304,12 +413,56 @@ A medida que suponemos que p estrella se corre hacia valores inferiores, vemos q
 Punto 7
 -------
 
+Para concluir si hay diferencia en el uso de la estación antes y despues de la innaguración de la estación de subte de Facultad de Derecho, se tomo la cantidad de viajes por día (Se asigna un viaje al día en el que este comienza), luego si encontramos una diferencia significativa en la media de viajes por día (se considera un viaje de la estación si este comienza o termina en la estación).
 
+Luego se calculan dos data frame, uno con la información de la cantidad de viajes diarios de la estación los días previos al mes de mayo, y el otro con la cantidad de viajes diarios de la estación desde mayo en adelante. 
 
+```{r, cache=TRUE}
+recorridos$facultad_derecho<- recorridos$id_estacion_destino == 1 |
+    recorridos$id_estacion_origen == 1
+recorridosFacultad<- recorridos %>% filter(!is.na(id_estacion_origen) & !is.na(id_estacion_destino)) %>% filter(facultad_derecho)
+recorridosFacultad$mes<- as.POSIXlt(recorridosFacultad$fecha_origen_recorrido)$mon
+recorridosFacultad$fecha_origen<- as.Date(recorridosFacultad$fecha_origen_recorrido)
+recorridosFacultad$fecha_destino<- as.Date(recorridosFacultad$fecha_destino_recorrido)
 
+recorridosAntes<- recorridosFacultad[recorridosFacultad$mes < 5,]
+recorridosDespues<- recorridosFacultad[recorridosFacultad$mes > 4,]
 
+viajesDiariosAntes<- recorridosAntes %>% group_by(fecha_origen) %>%
+    summarise(viajes = length(fecha_origen))
+viajesDiariosAntes<- as.data.frame(viajesDiariosAntes)
+viajesDiariosDespues<- recorridosDespues %>% group_by(fecha_origen) %>%
+    summarise(viajes = length(fecha_origen))
+viajesDiariosDespues<- as.data.frame(viajesDiariosDespues)
+```
 
+La prueba de hipotesis sera:
 
+Hipótesis Nula: La diferencia del promedio de viajes antes y despues de la innaguración de la estación de Subte Facultad de Derecho es igual a 0.
+
+Hipótesis Alternativa: La diferencia del promedio de viajes antes y despues de la innaguración de la estación de Subte Facultad de Derecho es distinta de 0.
+
+Esto se hara con un nivel de significación del 5%
+
+Este test se hara con dos conjuntos de datos, uno tomando solo 4 meses de datos (Marzo y Abril en el primer set de datos, Mayo y Junio en el segundo set de datos), y otro con los 151 días de datos del primer set de datos y los primeros 151 datos del segundo set de datos. En este caso la prueba no es apareada debido a que no es el mismo "sujeto" que se mide antes y despues de la innaguración.
+
+##### Caso de 4 meses
+
+```{r,cache=TRUE}
+t.test(viajesDiariosAntes$viajes[92:151],viajesDiariosDespues$viajes[1:60],paired = FALSE,mu = 0, alternative = "two.sided")
+```
+
+Para este caso no se encuentra evidencia para rechazar la hipótesis nula, debido a lo alto del p-valor y ademas el 0 esta contenido dentro del intervalo de confianza.
+
+##### Caso de 151 días
+
+```{r,cache=TRUE}
+t.test(viajesDiariosAntes$viajes,viajesDiariosDespues$viajes[1:151], paired = FALSE, mu = 0,alternative = "two.sided")
+```
+
+En este caso se rechaza la hipótesis nula debido a que el p-valor es menor al nivel de significacíon, por lo tanto decimos que hay evidencia estadística de que la cantidad de viajes diarios es diferente, mas aún, dado el intervalo de confianza podemos decir que la cantidad de viajes por día aumento luego de la innaguración de la estación de Subte.
+
+Como conclusión general podemos decir que si hay un cambio significativo en el uso de la estación de EcoBici antes y depues de la innaguración de la estación de Subte pero el mismo fue paulatino, ya que se requirio tomar muestras de mas días para poder visualizar dicho comportamiento.
 
 Punto 8
 --------
@@ -455,7 +608,7 @@ names(users)[1] <- 'id_usuario'
 
 # Creo un nuevo dataframe con el merge entre la informacion de las bicicletas y la de los usuarios
 
-df_with_users <- merge(x = df, y = users,by = 'id_usuario')
+df_with_users <- merge(x = recorridos, y = users,by = 'id_usuario')
 df_with_users <- select(df_with_users, -c(fecha_alta,hora_alta))
 
 # Defino funcion de correlacion
