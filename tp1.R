@@ -72,3 +72,41 @@ grafIC_sin_feriados
 #Si descontamos del analisis los dias que fueron feriados vemos que la media de uso
 #diario de bicis aumenta en general pero se mantiene la estacionalidad los dias de
 #semana (lunes a viernes).
+
+#(10)
+altas2018 <- altas
+altas2017 <- read.csv("C:/Users/User three/Desktop/Fede/MiM+Analytics/Materias/Modulo 1/Metodos Estadisticos Aplicados a Negocios/TP/usuarios-ecobici-2017.csv",
+                      header = TRUE, sep = ",")
+altas2016 <- read.csv("C:/Users/User three/Desktop/Fede/MiM+Analytics/Materias/Modulo 1/Metodos Estadisticos Aplicados a Negocios/TP/usuarios-ecobici-2016.csv",
+                      header = TRUE, sep = ",")
+altas2015 <- read.csv("C:/Users/User three/Desktop/Fede/MiM+Analytics/Materias/Modulo 1/Metodos Estadisticos Aplicados a Negocios/TP/usuarios-ecobici-2015.csv",
+                      header = TRUE, sep = ",")
+
+altas <- rbind(altas2018, altas2017, altas2016, altas2015)
+
+recorridos$usuario_edad <- with(altas, usuario_edad[match(recorridos$id_usuario,
+                                                          altas$usuario_id)])
+
+library(boot)
+recorridos$usuario_edad <- as.numeric(recorridos$usuario_edad)
+recorridos$duracion_recorrido <- as.numeric(recorridos$duracion_recorrido)
+recorridos <- recorridos[!is.na(recorridos$usuario_edad),]
+recorridos <- recorridos[!is.na(recorridos$duracion_recorrido),]
+fc_cor <- function(d,i){
+  d <- recorridos[i,]
+  return(cor(recorridos$usuario_edad,recorridos$duracion_recorrido))
+}
+
+fc_cor(recorridos)
+
+recorridos <- recorridos %>% filter(id_estacion_origen == 9) %>% filter(id_estacion_destino == 66)
+set.seed(123) #si lo suprimo no puedo replicar los mismos resultados (variarían por la simulación)
+boot_cor <- boot(data = recorridos, statistic = fc_cor, R = 100)
+boot_cor
+boot_cor$t #para ver las 1000 replicaciones
+sd(boot_cor$t) #el error estándar
+mean(boot_cor$t)-boot_cor$t0 #el sesgo
+#histograma y qqplot
+plot(boot_cor)
+#intervalo de confianza:
+boot.ci(boot.out = boot_cor, type = c("norm", "basic", "perc", "bca"))
