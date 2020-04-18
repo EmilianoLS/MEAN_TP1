@@ -225,7 +225,7 @@ tab$std <- usuarios_diarios_anio %>% group_by(dia_semana) %>% summarise(mu = sd(
 tab$lim_inf <- tab$mu - (tab$z$mu*tab$std$mu)
 tab$lim_sup <- tab$mu + (tab$z$mu*tab$std$mu)
 
-tab$dia_semana <- factor(tab$dia_semana, levels = c("lunes","martes","mi?rcoles","jueves","viernes","s?bado","domingo"))
+tab$dia_semana <- factor(tab$dia_semana, levels = c("lunes","martes","miercoles","jueves","viernes","sabado","domingo"))
 grafIC <- ggplot(data = tab) + geom_pointrange(mapping = aes(x = dia_semana, y = mu, ymin = lim_inf, ymax = lim_sup)) + geom_errorbar(mapping = aes(x = dia_semana, ymin = lim_inf, ymax = lim_sup))
 
 grafIC
@@ -249,7 +249,7 @@ tab$std <- usuarios_diarios_anio %>% filter(es_feriado == 0) %>% group_by(dia_se
 tab$lim_inf <- tab$mu - (tab$z$mu*tab$std$mu)
 tab$lim_sup <- tab$mu + (tab$z$mu*tab$std$mu)
 
-tab$dia_semana <- factor(tab$dia_semana, levels = c("lunes","martes","mi?rcoles","jueves","viernes","s?bado","domingo"))
+tab$dia_semana <- factor(tab$dia_semana, levels = c("lunes","martes","miercoles","jueves","viernes","sabado","domingo"))
 grafIC_sin_feriados <- ggplot(data = tab) + geom_pointrange(mapping = aes(x = dia_semana, y = mu, ymin = lim_inf, ymax = lim_sup)) + geom_errorbar(mapping = aes(x = dia_semana, ymin = lim_inf, ymax = lim_sup))
 
 grafIC_sin_feriados
