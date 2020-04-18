@@ -632,3 +632,25 @@ plot(boot_cor)
 boot.ci(boot.out = boot_cor, type = c("norm", "basic", "perc", "bca"))
 
 ```
+# SEGUNDA VERSION BOOT
+```{r}
+Las_Heras_Bilingurst= recorridos%>%
+  filter(id_estacion_origen == 9 & id_estacion_destino== 66 
+         & !is.na(usuario_edad) & !is.na(duracion)) 
+attach(Las_Heras_Bilingurst)
+
+cor_edad_duracion = function(p,i){
+  p = Las_Heras_Bilingurst[i,]
+  return(cor(p$usuario_edad, p$duracion))
+}
+
+boot_edad_dur = boot(data = Las_Heras_Bilingurst, statistic = cor_edad_duracion, R = 1000)
+boot_edad_dur$t
+plot(boot_edad_dur)
+```
+Observando los gráficos anteriores podemos concluir que el estadístico tiene una distribución muy similar a una distribución normal.
+```{r}
+boot.ci(boot.out = boot_edad_dur, type = c("perc"))
+```
+En función de intervalo anterior se puede afirmar que existe una correlación positiva entre la duración del recorrido y la edad del usuario.
+
