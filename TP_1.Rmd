@@ -181,6 +181,38 @@ Evidentemente, **ambas medidas no son iguales**. Puntualmente, la variable *'dur
 
 En base a esta información, se va a realizar el test de hipótesis sober la variable 'duracion_recorrido_manual', porque se entiende que es más confiable y quedó demostrado que es significativamente diferente del valor originalmente provisto.
 
+
+Punto dos
+---------
+
+
+
+
+
+
+
+
+
+
+
+
+Punto tres
+----------
+
+
+
+
+
+
+
+
+
+Punto 4
+-------
+
+
+
+
 Prueba de hipótesis
 -------------------
 
@@ -266,6 +298,39 @@ plot(pstar,potencia, ylim=c(0,1),type = "l", xlab= "mu*", ylab= "potencia", lwd=
 Arriba se observa la curva de potencia para distintos valores de p estrella, se observa que para una un valor cercano al 20% como sugería el problema, la potencia del test es inferior al 20%. Se entiende entonces que la probabilidad de rechazar la hipótesis nula suponiendo que esta sea falsa es bastante baja.
 
 A medida que suponemos que p estrella se corre hacia valores inferiores, vemos que la potencia del test sube significativamente con unos pocos corrimientos. Por lo tanto, cuanto más bajo sea el p estrella, más potente se vuelve el test porque la hipótesis nula original se volvería cada vez más absurda.
+
+
+
+Punto 7
+-------
+
+
+
+
+
+
+
+
+Punto 8
+--------
+
+
+
+
+
+
+
+
+
+Punto 9
+-------
+
+
+
+
+
+
+
 
 Boostrapping
 ------------
