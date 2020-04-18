@@ -1,6 +1,6 @@
 Primero se cargan todas las librerias que se van a estar usando en el trabajo
 
-```{r, cache=TRUE}
+```{r, cache=TRUE, warning=FALSE,echo=FALSE, results='hide'}
 rm(list=ls())
 
 library(lubridate)
@@ -10,8 +10,9 @@ library('rmarkdown')
 library(pwr)
 library(boot)
 library(plotly)
-```
-```{r}
+library(knitr)
+library(leaflet)
+
 options(scipen=999) #para evitar trabajar con notación científica
 ```
 
@@ -20,7 +21,7 @@ A continuacion se cargan los datos:
   - La base de recorridos de bicicletas durante el 2018
   - Los archivos de id_usuarios para los años 2015,2016,2017,2018
 
-```{r,cache=TRUE}
+```{r,cache=TRUE, warning=FALSE}
 
 setwd('datasets/')
 
@@ -64,7 +65,7 @@ recorridos$mes_de_origen <- month(recorridos$fecha_origen_recorrido, label = TRU
 ```
 
 ```{r,cache=TRUE}
-head(select(recorridos,dia_de_semana_origen,hora_del_dia_origen,mes_de_origen))
+kable(head(select(recorridos,dia_de_semana_origen,hora_del_dia_origen,mes_de_origen)))
 ```
 
 Punto 1: Análisis exploratorio
@@ -111,9 +112,6 @@ mapa
 Visualizamos en un mapa:
 
 ```{r,cache=TRUE}
-
-library(leaflet)
-
 pal <- colorNumeric(c('blue','yellow','red'), domain = mapa$q)
 
 m <- leaflet(data = mapa) %>% 
@@ -158,7 +156,7 @@ Apartado: Descubrimiento sobre el tiempo del recorrido
 
 Dado que el punto solicita hacer un test de hipótesis sobre la duración del recorrido, buscamos comprobar que tan confiables eran los datos de 'duracion de recorrido' provisto por los datos.
 
-```{r,cache=TRUE}
+```{r,cache=TRUE, warning=FALSE}
 
 recorridos$duracion_recorrido_manual <- as.numeric((recorridos$fecha_destino_recorrido - recorridos$fecha_origen_recorrido), units = 'secs')
 
@@ -183,15 +181,10 @@ En base a esta información, se va a realizar el test de hipótesis sober la var
 
 Levantando las altas del 2018 y los recorridos del 2018:
 ```{r, cache=TRUE}
-altas <- read.csv("usuarios-ecobici-2018.csv",
-                  header = TRUE, sep = ",")
 
-summary(altas)
-dim(altas)
-prop.table(table(altas$usuario_sexo))
-
-recorridos <- read.csv("recorridos-realizados-2018.csv",
-                       header = TRUE, sep = ",")
+summary(users_2018)
+dim(users_2018)
+prop.table(table(users_2018$usuario_sexo))
 
 #Creo una columna que indique el dia de la semana en el que se retiro la bici.
 recorridos$dia_semana <- as.factor(strftime(recorridos$fecha_origen_recorrido, "%A"))
@@ -216,8 +209,8 @@ recorridos$fecha_origen_auxiliar <- as.factor(strptime(recorridos$fecha_origen_r
                                                        tz = "America/Argentina/Buenos_Aires"))
 
 usuarios_diarios_anio <- recorridos %>% group_by(fecha_origen_auxiliar) %>% summarise(total = length(dia_semana)) %>% ungroup()
-usuarios_diarios_anio$total <- as.numeric(usuarios_diarios_a?o$total)
-usuarios_diarios_anio$dia_semana <- as.factor(strftime(usuarios_diarios_a?o$fecha_origen_auxiliar, "%A"))
+usuarios_diarios_anio$total <- as.numeric(usuarios_diarios_anio$total)
+usuarios_diarios_anio$dia_semana <- as.factor(strftime(usuarios_diarios_anio$fecha_origen_auxiliar, "%A"))
 tab <- usuarios_diarios_anio %>% group_by(dia_semana) %>% summarise(mu = mean(total)) %>% ungroup()
 tab$z <- usuarios_diarios_anio %>% group_by(dia_semana) %>% summarise(mu = qt(0.975, length(total) - 1)) %>% ungroup()
 tab$std <- usuarios_diarios_anio %>% group_by(dia_semana) %>% summarise(mu = sd(total)/sqrt(length(total))) %>% ungroup()
@@ -239,11 +232,11 @@ feriados <- c("2018-01-01", "2018-02-12", "2018-02-13", "2018-03-24", "2018-03-2
               "2018-04-02", "2018-04-30", "2018-05-01", "2018-05-25", "2018-06-17", "2018-06-20",
               "2018-07-09", "2018-08-20", "2018-09-15", "2018-10-19", "2018-12-08", "2018-12-24",
               "2018-12-25", "2018-12-31")
-usuarios_diarios_anio$es_feriado <- factor(ifelse(usuarios_diarios_a?o$fecha_origen_auxiliar %in% feriados,
+usuarios_diarios_anio$es_feriado <- factor(ifelse(usuarios_diarios_anio$fecha_origen_auxiliar %in% feriados,
                                                  1, 0))
 
 tab <- usuarios_diarios_anio %>% filter(es_feriado == 0) %>% group_by(dia_semana) %>% summarise(mu = mean(total)) %>% ungroup()
-tab$z <- usuarios_diarios_a?o %>% filter(es_feriado == 0) %>% group_by(dia_semana) %>% summarise(mu = qt(0.975, length(total) - 1)) %>% ungroup()
+tab$z <- usuarios_diarios_anio %>% filter(es_feriado == 0) %>% group_by(dia_semana) %>% summarise(mu = qt(0.975, length(total) - 1)) %>% ungroup()
 tab$std <- usuarios_diarios_anio %>% filter(es_feriado == 0) %>% group_by(dia_semana) %>% summarise(mu = sd(total)/sqrt(length(total))) %>% ungroup()
 tab$lim_inf <- tab$mu - (tab$z$mu*tab$std$mu)
 tab$lim_sup <- tab$mu + (tab$z$mu*tab$std$mu)
@@ -353,19 +346,16 @@ phat = nrow(filter(subsample,id_estacion_origen == 009, id_estacion_destino == 0
 
 zstat = (phat-0.2)/sqrt(0.2*(1-0.2)/n)
 
-zcrit = qt(0.05, recorridos = n-1)
+zcrit = qt(0.05, df = n-1)
 
 zstat;zcrit
 
-pvalor <- pt(zstat,recorridos=n-1,lower.tail=TRUE);pvalor
+pvalor <- pt(zstat,df=n-1,lower.tail=TRUE);pvalor
 ```
 
 Tambien puede calcularse directamente con un binom.test:
 
 ```{r,cache=TRUE}
-
-#recorridos$mas_15_min <- recorridos$duracion_recorrido_manual > 15*60
-
 binom.test( x = nrow(filter(subsample,id_estacion_origen == 009, id_estacion_destino == 066,mas_15_min == TRUE)), 
             n = nrow(filter(subsample,id_estacion_origen == 009, id_estacion_destino == 066)), 
             p = 0.2, alternative = 'less')
@@ -384,11 +374,11 @@ Ahora se evalúa la *potencia* del test, osea, la probabilidad de rechazar la hi
 
 pstar <- 0.19
 
-xcrit <- qt(0.05, recorridos = n-1)*sqrt((0.2*(1-0.2))/n)+0.2
+xcrit <- qt(0.05, df = n-1)*sqrt((0.2*(1-0.2))/n)+0.2
 
 zcrit <- (xcrit - pstar)/sqrt((pstar*(1 - pstar))/n)
 
-beta <- 1 - pt(zcrit, recorridos = n-1)
+beta <- 1 - pt(zcrit, df = n-1)
 
 potencia <- 1 - beta; potencia
 
@@ -402,11 +392,11 @@ Con el resultado anterior, se obtuvo la potencia del test, ahora observamos que 
 
 pstar <- seq(from = 0.1, to=0.2, by=0.001)
 
-xcrit <- qt(0.05, recorridos = n-1)*sqrt((0.2*(1-0.2))/n)+0.2
+xcrit <- qt(0.05, df = n-1)*sqrt((0.2*(1-0.2))/n)+0.2
 
 zcrit <- (xcrit - pstar)/sqrt((pstar*(1 - pstar))/n)
 
-beta <- 1 - pt(zcrit, recorridos = n-1)
+beta <- 1 - pt(zcrit, df = n-1)
 
 potencia <- 1-beta
 
@@ -508,7 +498,7 @@ names(users)[1] <- 'id_usuario'
 # Creo un nuevo dataframe con el merge entre la informacion de las bicicletas y la de los usuarios
 
 df_with_users <- merge(x = recorridos, y = users,by = 'id_usuario')
-df_with_users <- select(recorridos_with_users, -c(fecha_alta,hora_alta))
+df_with_users <- select(df_with_users, -c(fecha_alta,hora_alta))
 
 # Defino funcion de correlacion
 
