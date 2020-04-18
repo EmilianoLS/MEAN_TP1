@@ -596,6 +596,7 @@ Se puede afirmar con un 95% de confianza que existen diferencias significativas 
 
 
 
+
 Boostrapping
 ------------
 
