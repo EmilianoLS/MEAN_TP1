@@ -1,6 +1,13 @@
+---
+title: "TP 1: MEAN"
+output: html_notebook
+author: "Eloy Chang, Emiliano Lo Sasso, Federico Rodriguez, Federico Gonzalez"
+---
+
+
 Primero se cargan todas las librerias que se van a estar usando en el trabajo
 
-```{r, cache=TRUE, warning=FALSE,echo=FALSE, results='hide'}
+```{r, cache=TRUE, warning=FALSE,echo=FALSE, results='hide',message=FALSE,prompt=FALSE}
 rm(list=ls())
 
 library(lubridate)
@@ -68,7 +75,7 @@ recorridos$mes_de_origen <- month(recorridos$fecha_origen_recorrido, label = TRU
 kable(head(select(recorridos,dia_de_semana_origen,hora_del_dia_origen,mes_de_origen)))
 ```
 
-Punto 1: Análisis exploratorio
+Punto 1
 ------------------------------
 
 Se analizan algunos gráficos para entender la distribución de algunas métricas como la edad, el uso de las bicicletas, frecuencia, lugares, etc. 
@@ -106,7 +113,7 @@ Otro dato interesante de obtener es la cantidad de extracciones por estación, p
 
 ```{r,cache=TRUE}
 mapa <- recorridos %>% filter(complete.cases(lat_estacion_origen)) %>% group_by(nombre_estacion_origen, lat_estacion_origen, long_estacion_origen) %>% summarize(q = n()) %>% ungroup()
-mapa
+kable(mapa)
 ```
 
 Visualizamos en un mapa:
@@ -140,12 +147,11 @@ recorridos$misma_estacion <- recorridos$nombre_estacion_origen == recorridos$nom
 
 bicis = as.data.frame(recorridos)
 
-bicis %>% filter((!is.na(id_estacion_origen)) & (!is.na(id_estacion_destino)) & (misma_estacion == FALSE)) %>% 
+kable(bicis %>% filter((!is.na(id_estacion_origen)) & (!is.na(id_estacion_destino)) & (misma_estacion == FALSE)) %>% 
   group_by(nombre_estacion_origen,nombre_estacion_destino) %>%  
-  summarize(count = n()) %>% arrange(desc(count)) %>% ungroup()
+  summarize(count = n()) %>% arrange(desc(count)) %>% ungroup())
 
-bicis %>% filter((id_estacion_origen == 009) & (id_estacion_destino == 066)) %>% select(nombre_estacion_origen,nombre_estacion_destino) %>% 
-  group_by(nombre_estacion_origen,nombre_estacion_destino) %>% summarize(count = n()) %>% ungroup()
+kable(bicis %>% filter((id_estacion_origen == 009) & (id_estacion_destino == 066)) %>% select(nombre_estacion_origen,nombre_estacion_destino) %>% group_by(nombre_estacion_origen,nombre_estacion_destino) %>% summarize(count = n()) %>% ungroup())
 
 ```
 
@@ -163,7 +169,7 @@ recorridos$duracion_recorrido_manual <- as.numeric((recorridos$fecha_destino_rec
 ggplot(filter(recorridos,(id_estacion_origen == 009) & (id_estacion_destino == 066))) + 
          geom_density(aes(x = duracion_recorrido_manual),fill = 'red', alpha = 0.3) +
          geom_density(aes(x = duracion_recorrido),fill = 'green', alpha = 0.3) +
-         ggtitle('Distribucion de la duracion de los recorridos') + labs(x = 'Duracion de recorrido')
+         ggtitle('Distribución de la duración de los recorridos') + labs(x = 'Duración de recorrido')
 ```
 
 El grafico pareciera sugerir que ambas variables tienen medias distintas, por lo cual sospechamos que los datos provistos por el gobierno no están del todo acertados. Para confirmar las sospechas, realizamos un test de hipótesis.
@@ -191,8 +197,8 @@ recorridos$dia_semana <- as.factor(strftime(recorridos$fecha_origen_recorrido, "
 
 summary(recorridos)
 dim(recorridos)
-prop.table(table(recorridos$genero_usuario))
-prop.table(table(recorridos$dia_semana))
+kable(prop.table(table(recorridos$genero_usuario)))
+kable(prop.table(table(recorridos$dia_semana)))
 ```
 Respecto a las altas:
 Vemos que en el 2018 se dieron de alta 56182 usuarios, de los cuales aproximadamente el 46% es femenino y el 54% masculino. El dia donde mas altas se dieron fue el 08/10/2018. La hora en la cual m?s usuarios se dan de alta es a las 5:57:45. La edad promedio de los usuarios es de 33 a?os.
@@ -201,7 +207,7 @@ Respecto a los recorridos:
 Vemos que en el 2018 se hicieron 2619968 recorridos, que tanto el origen como el destino m?s comun se da en la Facultad de Medicina y que las mujeres hicieron aproximadamente el 28% de los recorridos, mientras que los hombres el 72%. El d?a de la semana en el que mas bicis son retiradas es el miercoles.
 
 
-Punto dos
+Punto 2
 ---------
 ```{r,cache=TRUE}
 recorridos$fecha_origen_auxiliar <- as.factor(strptime(recorridos$fecha_origen_recorrido,
@@ -225,7 +231,7 @@ grafIC
 En el gr?fico que muestra los intervalos de confianza de la cantidad media de usuarios por cada dia de la semana encontramos evidencia estadistica de una estacionalidad en el uso de las bicis los dias de semana (lunes a viernes), donde vemos que los IC se solapan y son superiores a los de los dias de fin de semana (sabado y domingo).
 
 
-Punto tres
+Punto 3
 ----------
 ```{r, cache=TRUE}
 feriados <- c("2018-01-01", "2018-02-12", "2018-02-13", "2018-03-24", "2018-03-29", "2018-03-30",
@@ -252,7 +258,7 @@ Si descontamos del analisis los dias que fueron feriados vemos que la media de u
 Punto 4
 -------
 
-Para encarar este problema primero se realizo un extracto de los datos con información de todos los viajes realizados por este usuario, con la finalidad de obtener los kilómetros entre cada una de las estaciones.
+Para encarar este problema primero se realizó un extracto de los datos con información de todos los viajes realizados por este usuario, con la finalidad de obtener los kilómetros entre cada una de las estaciones.
 
 ```{r, cache=TRUE}
 posUsuario<- recorridos$id_usuario == 606320
@@ -265,7 +271,7 @@ recorridosCiclista<- recorridosCiclista[complete.cases(recorridosCiclista),]
 kable(head(recorridosCiclista))
 ```
 
-Luego se busco la distancia entre cada uno de los puntos en [Google Maps](https://www.google.com.ar/maps), y se agrego esta información al datadrame, y finalmente se calculo la media armónica y la media aritmética de la velocidad para este usuario.
+Luego se buscó la distancia entre cada uno de los puntos en [Google Maps](https://www.google.com.ar/maps), y se agregó esta información al dataframe, y finalmente se calculó la media armónica y la media aritmética de la velocidad para este usuario.
 
 ```{r, cache=TRUE}
 recorridosCiclista$kilometros<- 0
@@ -320,12 +326,13 @@ En estos casos es recomendable usar la media armónica debido a que es menos sen
 plot_ly(recorridos[posUsuario,], x = ~velocidad,type = "histogram", histnorm = "probability", 
         name = "Distribución") %>%
     add_lines(x = rep(mediaAritmetica,2), y = c(0,0.32), name = "Media Aritmética") %>%
-    add_lines(x = rep(mediaArmonica,2), y = c(0,0.32), name = "Media Armónica")
+    add_lines(x = rep(mediaArmonica,2), y = c(0,0.32), name = "Media Armónica") %>%
+    layout(title = "Distribución de Valocidad", xaxis = list(title = "Velocidad"), yaxis = list(title = "Densidad"))
 
 ```
 
 
-Prueba de hipótesis
+Punto 5
 -------------------
 
 **Hipótesis nula: La proporción de usuarios que tardan mas de 15 minutos en hacer el recorrido de la estacion 009 a la 066 es mayor o igual al 20%.**
@@ -364,7 +371,7 @@ binom.test( x = nrow(filter(subsample,id_estacion_origen == 009, id_estacion_des
 El resultado del *p-value* es mayor 0.05, con lo cual, para un nivel de confianza del 95%, no tenemos evidencia suficiente para refutar la hipótesis nula. En otras palabras, no puedo rechazar la posibilidad de que la proporción de usuarios que tardan más de 15 minutos es mayor al 20%
 
 
-Evaluando la potencia del test
+Punto 6
 ------------------------------
 
 Ahora se evalúa la *potencia* del test, osea, la probabilidad de rechazar la hipótesis nula, siendo esta falsa.
@@ -413,9 +420,9 @@ A medida que suponemos que p estrella se corre hacia valores inferiores, vemos q
 Punto 7
 -------
 
-Para concluir si hay diferencia en el uso de la estación antes y despues de la innaguración de la estación de subte de Facultad de Derecho, se tomo la cantidad de viajes por día (Se asigna un viaje al día en el que este comienza), luego si encontramos una diferencia significativa en la media de viajes por día (se considera un viaje de la estación si este comienza o termina en la estación).
+Para concluir si hay diferencia en el uso de la estación antes y después de la inauguración de la estación de subte de Facultad de Derecho, se tomó la cantidad de viajes por día (Se asigna un viaje al día en el que este comienza), luego se analiza si existe una diferencia significativa en la media de viajes por día (se considera un viaje de la estación si este comienza o termina en la estación).
 
-Luego se calculan dos data frame, uno con la información de la cantidad de viajes diarios de la estación los días previos al mes de mayo, y el otro con la cantidad de viajes diarios de la estación desde mayo en adelante. 
+Luego se calculan dos dataframe, uno con la información de la cantidad de viajes diarios de la estación los días previos al mes de mayo, y el otro con la cantidad de viajes diarios de la estación desde mayo en adelante. 
 
 ```{r, cache=TRUE}
 recorridos$facultad_derecho<- recorridos$id_estacion_destino == 1 |
@@ -436,15 +443,15 @@ viajesDiariosDespues<- recorridosDespues %>% group_by(fecha_origen) %>%
 viajesDiariosDespues<- as.data.frame(viajesDiariosDespues)
 ```
 
-La prueba de hipotesis sera:
+La prueba de hipótesis será:
 
-Hipótesis Nula: La diferencia del promedio de viajes antes y despues de la innaguración de la estación de Subte Facultad de Derecho es igual a 0.
+Hipótesis Nula: La diferencia del promedio de viajes antes y después de la inauguración de la estación de Subte Facultad de Derecho es igual a 0.
 
-Hipótesis Alternativa: La diferencia del promedio de viajes antes y despues de la innaguración de la estación de Subte Facultad de Derecho es distinta de 0.
+Hipótesis Alternativa: La diferencia del promedio de viajes antes y después de la inauguración de la estación de Subte Facultad de Derecho es distinta de 0.
 
-Esto se hara con un nivel de significación del 5%
+Esto se hará con un nivel de significación del 5%
 
-Este test se hara con dos conjuntos de datos, uno tomando solo 4 meses de datos (Marzo y Abril en el primer set de datos, Mayo y Junio en el segundo set de datos), y otro con los 151 días de datos del primer set de datos y los primeros 151 datos del segundo set de datos. En este caso la prueba no es apareada debido a que no es el mismo "sujeto" que se mide antes y despues de la innaguración.
+Este test se hará con dos conjuntos de datos, uno tomando sólo 4 meses de datos (Marzo y Abril en el primer set de datos, Mayo y Junio en el segundo set de datos), y otro con los 151 días de datos del primer set de datos y los primeros 151 datos del segundo set de datos. En este caso la prueba no es apareada debido a que no es el mismo "sujeto" que se mide antes y después de la inauguración.
 
 ##### Caso de 4 meses
 
@@ -452,7 +459,7 @@ Este test se hara con dos conjuntos de datos, uno tomando solo 4 meses de datos 
 t.test(viajesDiariosAntes$viajes[92:151],viajesDiariosDespues$viajes[1:60],paired = FALSE,mu = 0, alternative = "two.sided")
 ```
 
-Para este caso no se encuentra evidencia para rechazar la hipótesis nula, debido a lo alto del p-valor y ademas el 0 esta contenido dentro del intervalo de confianza.
+Para este caso no se encuentra evidencia para rechazar la hipótesis nula, debido a lo alto del p-valor y además el 0 está contenido dentro del intervalo de confianza.
 
 ##### Caso de 151 días
 
@@ -460,13 +467,13 @@ Para este caso no se encuentra evidencia para rechazar la hipótesis nula, debid
 t.test(viajesDiariosAntes$viajes,viajesDiariosDespues$viajes[1:151], paired = FALSE, mu = 0,alternative = "two.sided")
 ```
 
-En este caso se rechaza la hipótesis nula debido a que el p-valor es menor al nivel de significacíon, por lo tanto decimos que hay evidencia estadística de que la cantidad de viajes diarios es diferente, mas aún, dado el intervalo de confianza podemos decir que la cantidad de viajes por día aumento luego de la innaguración de la estación de Subte.
+En este caso se rechaza la hipótesis nula debido a que el p-valor es menor al nivel de significacíon, por lo tanto decimos que hay evidencia estadística de que la cantidad de viajes diarios es diferente, mas aún, dado el intervalo de confianza podemos decir que la cantidad de viajes por día aumentó luego de la inauguración de la estación de Subte.
 
-Como conclusión general podemos decir que si hay un cambio significativo en el uso de la estación de EcoBici antes y depues de la innaguración de la estación de Subte pero el mismo fue paulatino, ya que se requirio tomar muestras de mas días para poder visualizar dicho comportamiento.
+Como conclusión general podemos decir que si hay un cambio significativo en el uso de la estación de EcoBici antes y depués de la inauguración de la estación de Subte pero el mismo fue paulatino, ya que se requirió tomar muestras de más días para poder visualizar dicho comportamiento.
 
 Punto 8
 --------
-```{r}
+```{r,cache=TRUE}
 #generacion variables
 recorridos$fecha_orig = strptime(recorridos$fecha_origen_recorrido , 
                            format = "%Y-%m-%d %H:%M:%OS",
@@ -491,7 +498,7 @@ Hombres_duracion
 Con un 95% de confianza se puede afirmar que existen diferencias significativas en la duración del recorrido entre hombres y mujeres dado que los intervalos de confianza no
 tienen solapamiento. El intervalo de confianza de la duración de recorrido de mujeres es (27,6 : 27,7) mientras que el de los hombres (24,99 : 25,05)
 
-```{r}
+```{r,cache=TRUE}
 recorridos$fin_de_semana = (recorridos$dia_semana %in% c("domingo","sábado"))
 
 #IC Proporcion mujeres dias de semana
@@ -509,7 +516,7 @@ prop_muj_finde
 Con un 95% de confianza se puede afirmar que existen diferencias significativas en la proporción de recorridos realizados por mujeres durante días de semana en contraposición a fines de semana. Se puede hacer esta afirmación dado que los intervalos de confianza de estas proporciones no se solapan.
 Siendo mayor la proporción de recorridos realizados por mujeres los fines de semana que durante los días de semana. 
 
-```{r}
+```{r,cache=TRUE}
 recorridos$hora = as.numeric(strftime(recorridos$fecha_origen_recorrido,format = "%H"))
 recorridos$madrugada = recorridos$hora %in% (0:4)
 
@@ -532,14 +539,13 @@ Siendo mayor la proporción de recorridos realizados por hombres durante la madr
 
 Punto 9
 -------
-```{r}
+```{r, cache=TRUE}
 # Para resolver mensaje de error luego de ejecutar left_join
 recorridos$fecha_orig = as.POSIXct(recorridos$fecha_orig) 
 recorridos$fecha_dest = as.POSIXct(recorridos$fecha_dest)
 
 # se detectan 8 "usuario_id" duplicados
-usuarios_duplicados = users%>% group_by(usuario_id)%>% summarise (cuenta = n())%>%
-  filter(cuenta > 1)
+usuarios_duplicados = users %>% group_by(usuario_id) %>% summarise(cuenta = n()) %>% filter(cuenta > 1)
 
 #elimino duplicados. De esta forma los excluyo del análisis
 users = users[!users$usuario_id %in% usuarios_duplicados$usuario_id,]
@@ -564,7 +570,7 @@ Mayores35_duracion
 Se puede afirmar con un 95% de confianza que existen diferencias significativas entre la duración de los recorridos de las personas menores de 35 años en contraposición a los mayores de esta edad. Se puede realizar esta afirmación dado que los intervalos de confianza no se solapan.
 Se observa una duración en los recorridos levemente mayor en el caso de los mayores de 35 años.
 
-```{r}
+```{r,cache=TRUE}
 menores35_finde = binom.test(c(table(recorridos$fin_de_semana,recorridos$Mayor35)[2,1],
              table(recorridos$fin_de_semana,recorridos$Mayor35)[2,2]), 
            conf.level = 0.95)$conf.int
@@ -579,7 +585,7 @@ menores35_LunVie
 Se puede afirmar con un 95% de confianza que existen diferencias significativas en la proporción de recorridos realizados por menores de 35 años durante el fin de semana en contraposición al resto de la semana. 
 Siendo mayor la proporción durante el fin de semana.
 
-```{r}
+```{r,cache=TRUE}
 #IC menores 35 en la madrugada
 menores35_madrugada = binom.test(c(table(recorridos$madrugada,recorridos$Mayor35)[2,1],
              table(recorridos$madrugada,recorridos$Mayor35)[2,2]), 
@@ -602,38 +608,7 @@ Boostrapping
 
 Para poder hacer este punto, se necesita conocer la edad de los usuarios, cosa que el dataset de los recorridos no tiene. Debemos primero unir la base de id de usuarios (que si tiene la información de la edad) con la de los recorridos.
 
-```{r}
-
-
-names(users)[1] <- 'id_usuario'
-
-# Creo un nuevo dataframe con el merge entre la informacion de las bicicletas y la de los usuarios
-
-df_with_users <- merge(x = recorridos, y = users,by = 'id_usuario')
-df_with_users <- select(df_with_users, -c(fecha_alta,hora_alta))
-
-# Defino funcion de correlacion
-
-fc_cor <- function(d,i){
-  d <- df_with_users[i,]
-  return(cor(d$duracion_recorrido,d$usuario_edad)) # Uso duracion de recorrido y no la manual porque tiene missings
-}
-
-
-set.seed(123) # Me aseguro poder replicar los mismos resultados a posteriori
-
-boot_cor <- boot(data = filter(df_with_users,id_estacion_origen == 009, id_estacion_destino == 066), statistic = fc_cor, R = 10000)
-boot_cor
-
-#histograma y qqplot
-plot(boot_cor)
-
-#intervalo de confianza:
-boot.ci(boot.out = boot_cor, type = c("norm", "basic", "perc", "bca"))
-
-```
-# SEGUNDA VERSION BOOT
-```{r}
+```{r,cache=TRUE}
 Las_Heras_Bilingurst= recorridos%>%
   filter(id_estacion_origen == 9 & id_estacion_destino== 66 
          & !is.na(usuario_edad) & !is.na(duracion)) 
@@ -645,11 +620,35 @@ cor_edad_duracion = function(p,i){
 }
 
 boot_edad_dur = boot(data = Las_Heras_Bilingurst, statistic = cor_edad_duracion, R = 1000)
-boot_edad_dur$t
-plot(boot_edad_dur)
 ```
+
+```{r, warning=FALSE,cache=TRUE}
+densidad<- density(boot_edad_dur$t)
+
+muestras<- data.frame(
+  id = 1:length(boot_edad_dur$t),
+  correlaciones = boot_edad_dur$t
+)
+
+plot_ly(muestras, x = ~correlaciones, type = "histogram", histnorm = "probability", name = "Distribución") %>%
+    add_lines(x = densidad$x, y = densidad$y/100, name = "Densidad") %>%
+    add_lines(x = rep(boot_edad_dur$t0,2), y = c(0, 0.09), name = "Correlación muestral") %>% 
+    layout(title = "Histograma de correlaciones Bootstap",
+           xaxis = list(title = "Correlación"), yaxis = list(title = "Densidad"))
+```
+
+```{r, warning=FALSE,cache=TRUE}
+muestras<- muestras[order(muestras$correlaciones),]
+muestras$normal<- sort(rnorm(nrow(muestras)))
+
+plot_ly(muestras, x = ~normal, y = ~correlaciones, type = "scatter", mode = "markers") %>%
+    layout(title = "QQ Plot", xaxis = list(title = "Quantiles de la Normal estandar"),
+           yaxis = list(title = "Correlación"))
+```
+
+
 Observando los gráficos anteriores podemos concluir que el estadístico tiene una distribución muy similar a una distribución normal.
-```{r}
+```{r,cache=TRUE}
 boot.ci(boot.out = boot_edad_dur, type = c("perc"))
 ```
 En función de intervalo anterior se puede afirmar que existe una correlación positiva entre la duración del recorrido y la edad del usuario.
