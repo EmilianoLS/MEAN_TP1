@@ -203,10 +203,10 @@ kable(prop.table(table(recorridos$genero_usuario)))
 kable(prop.table(table(recorridos$dia_semana)))
 ```
 Respecto a las altas:
-Vemos que en el 2018 se dieron de alta 56182 usuarios, de los cuales aproximadamente el 46% es femenino y el 54% masculino. El d?a donde mas altas se dieron fue el 08/10/2018. La hora en la cual mas usuarios se dan de alta es a las 5:57:45. La edad promedio de los usuarios es de 33 a?os.
+Vemos que en el 2018 se dieron de alta 56182 usuarios, de los cuales aproximadamente el 46% es femenino y el 54% masculino. El día donde más altas se dieron fue el 08/10/2018. La hora en la cual más usuarios se dan de alta es a las 5:57:45. La edad promedio de los usuarios es de 33.
 
 Respecto a los recorridos:
-Vemos que en el 2018 se hicieron 2619968 recorridos, que tanto el origen como el destino mas usual se da en la Facultad de Medicina y que las mujeres hicieron aproximadamente el 28% de los recorridos, mientras que los hombres el 72%. El d?a de la semana en el que mas bicis son retiradas es el mi?rcoles.
+Vemos que en el 2018 se hicieron 2619968 recorridos, que tanto el origen como el destino mas usual se da en la Facultad de Medicina y que las mujeres hicieron aproximadamente el 28% de los recorridos, mientras que los hombres el 72%. El día de la semana en el que más bicis son retiradas es el miércoles.
 
 
 Punto 2
@@ -225,12 +225,12 @@ tab$std <- usuarios_diarios_anio %>% group_by(dia_semana) %>% summarise(mu = sd(
 tab$lim_inf <- tab$mu - (tab$z$mu*tab$std$mu)
 tab$lim_sup <- tab$mu + (tab$z$mu*tab$std$mu)
 
-tab$dia_semana <- factor(tab$dia_semana, levels = c("lunes","martes","miercoles","jueves","viernes","sabado","domingo"))
+tab$dia_semana <- factor(tab$dia_semana, levels = c("lunes","martes","miércoles","jueves","viernes","sábado","domingo"))
 grafIC <- ggplot(data = tab) + geom_pointrange(mapping = aes(x = dia_semana, y = mu, ymin = lim_inf, ymax = lim_sup)) + geom_errorbar(mapping = aes(x = dia_semana, ymin = lim_inf, ymax = lim_sup))
 
 grafIC
 ```
-En el gr?fico que muestra los intervalos de confianza de la cantidad media de usuarios por cada dia de la semana encontramos evidencia estad?stica de una estacionalidad en el uso de las bicis los dias de semana (lunes a viernes), donde vemos que los IC se solapan y son superiores a los de los dias de fin de semana (s?bado y domingo).
+En el gráfico que muestra los intervalos de confianza de la cantidad media de usuarios por cada dia de la semana encontramos evidencia estadística de una estacionalidad en el uso de las bicis los dias de semana (lunes a viernes), donde vemos que los IC se solapan y son superiores a los de los días de fin de semana (sábado y domingo).
 
 
 Punto 3
@@ -249,12 +249,12 @@ tab$std <- usuarios_diarios_anio %>% filter(es_feriado == 0) %>% group_by(dia_se
 tab$lim_inf <- tab$mu - (tab$z$mu*tab$std$mu)
 tab$lim_sup <- tab$mu + (tab$z$mu*tab$std$mu)
 
-tab$dia_semana <- factor(tab$dia_semana, levels = c("lunes","martes","miercoles","jueves","viernes","sabado","domingo"))
+tab$dia_semana <- factor(tab$dia_semana, levels = c("lunes","martes","miércoles","jueves","viernes","sábado","domingo"))
 grafIC_sin_feriados <- ggplot(data = tab) + geom_pointrange(mapping = aes(x = dia_semana, y = mu, ymin = lim_inf, ymax = lim_sup)) + geom_errorbar(mapping = aes(x = dia_semana, ymin = lim_inf, ymax = lim_sup))
 
 grafIC_sin_feriados
 ```
-Si descontamos del an?lisis los d?as que fueron feriados vemos que la media de uso diario de bicis aumenta en general pero se mantiene la estacionalidad los dias de semana (lunes a viernes).
+Si descontamos del análisis los días que fueron feriados vemos que la media de uso diario de bicis aumenta en general pero se mantiene la estacionalidad los dias de semana (lunes a viernes).
 
 
 Punto 4
