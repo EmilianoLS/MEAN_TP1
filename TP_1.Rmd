@@ -1,7 +1,9 @@
 ---
-title: "TP 1: MEAN"
-output: html_notebook
+title: 'TP 1: MEAN'
 author: "Eloy Chang, Emiliano Lo Sasso, Federico Rodriguez, Federico Gonzalez"
+output:
+  html_document:
+    df_print: paged
 ---
 
 
@@ -113,7 +115,7 @@ Otro dato interesante de obtener es la cantidad de extracciones por estaciÃ³n, p
 
 ```{r,cache=TRUE}
 mapa <- recorridos %>% filter(complete.cases(lat_estacion_origen)) %>% group_by(nombre_estacion_origen, lat_estacion_origen, long_estacion_origen) %>% summarize(q = n()) %>% ungroup()
-kable(mapa)
+kable(head(mapa))
 ```
 
 Visualizamos en un mapa:
@@ -147,11 +149,9 @@ recorridos$misma_estacion <- recorridos$nombre_estacion_origen == recorridos$nom
 
 bicis = as.data.frame(recorridos)
 
-kable(bicis %>% filter((!is.na(id_estacion_origen)) & (!is.na(id_estacion_destino)) & (misma_estacion == FALSE)) %>% 
-  group_by(nombre_estacion_origen,nombre_estacion_destino) %>%  
-  summarize(count = n()) %>% arrange(desc(count)) %>% ungroup())
+kable(head(bicis %>% filter((!is.na(id_estacion_origen)) & (!is.na(id_estacion_destino)) & (misma_estacion == FALSE)) %>% group_by(nombre_estacion_origen,nombre_estacion_destino) %>% summarize(count = n()) %>% arrange(desc(count)) %>% ungroup()))
 
-kable(bicis %>% filter((id_estacion_origen == 009) & (id_estacion_destino == 066)) %>% select(nombre_estacion_origen,nombre_estacion_destino) %>% group_by(nombre_estacion_origen,nombre_estacion_destino) %>% summarize(count = n()) %>% ungroup())
+kable(head(bicis %>% filter((id_estacion_origen == 009) & (id_estacion_destino == 066)) %>% select(nombre_estacion_origen,nombre_estacion_destino) %>% group_by(nombre_estacion_origen,nombre_estacion_destino) %>% summarize(count = n()) %>% ungroup()))
 
 ```
 
@@ -203,10 +203,10 @@ kable(prop.table(table(recorridos$genero_usuario)))
 kable(prop.table(table(recorridos$dia_semana)))
 ```
 Respecto a las altas:
-Vemos que en el 2018 se dieron de alta 56182 usuarios, de los cuales aproximadamente el 46% es femenino y el 54% masculino. El día donde mas altas se dieron fue el 08/10/2018. La hora en la cual mas usuarios se dan de alta es a las 5:57:45. La edad promedio de los usuarios es de 33 años.
+Vemos que en el 2018 se dieron de alta 56182 usuarios, de los cuales aproximadamente el 46% es femenino y el 54% masculino. El d?a donde mas altas se dieron fue el 08/10/2018. La hora en la cual mas usuarios se dan de alta es a las 5:57:45. La edad promedio de los usuarios es de 33 a?os.
 
 Respecto a los recorridos:
-Vemos que en el 2018 se hicieron 2619968 recorridos, que tanto el origen como el destino mas usual se da en la Facultad de Medicina y que las mujeres hicieron aproximadamente el 28% de los recorridos, mientras que los hombres el 72%. El día de la semana en el que mas bicis son retiradas es el miércoles.
+Vemos que en el 2018 se hicieron 2619968 recorridos, que tanto el origen como el destino mas usual se da en la Facultad de Medicina y que las mujeres hicieron aproximadamente el 28% de los recorridos, mientras que los hombres el 72%. El d?a de la semana en el que mas bicis son retiradas es el mi?rcoles.
 
 
 Punto 2
@@ -230,7 +230,7 @@ grafIC <- ggplot(data = tab) + geom_pointrange(mapping = aes(x = dia_semana, y =
 
 grafIC
 ```
-En el gráfico que muestra los intervalos de confianza de la cantidad media de usuarios por cada dia de la semana encontramos evidencia estadística de una estacionalidad en el uso de las bicis los dias de semana (lunes a viernes), donde vemos que los IC se solapan y son superiores a los de los dias de fin de semana (sábado y domingo).
+En el gr?fico que muestra los intervalos de confianza de la cantidad media de usuarios por cada dia de la semana encontramos evidencia estad?stica de una estacionalidad en el uso de las bicis los dias de semana (lunes a viernes), donde vemos que los IC se solapan y son superiores a los de los dias de fin de semana (s?bado y domingo).
 
 
 Punto 3
@@ -254,7 +254,7 @@ grafIC_sin_feriados <- ggplot(data = tab) + geom_pointrange(mapping = aes(x = di
 
 grafIC_sin_feriados
 ```
-Si descontamos del análisis los días que fueron feriados vemos que la media de uso diario de bicis aumenta en general pero se mantiene la estacionalidad los dias de semana (lunes a viernes).
+Si descontamos del an?lisis los d?as que fueron feriados vemos que la media de uso diario de bicis aumenta en general pero se mantiene la estacionalidad los dias de semana (lunes a viernes).
 
 
 Punto 4
